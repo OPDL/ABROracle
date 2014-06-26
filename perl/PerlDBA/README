@@ -1,0 +1,35 @@
+
+The files in this directory contain the Perl DBA
+Toolkit as explained in the O'Reilly book by 
+Andy Duncan and Jared Still, "Perl for Oracle DBA's"
+
+If you use Perl and Oracle, you may find this interesting.
+
+The files in this directory are:
+
+PDBA-1.0.tar.gz
+This is the toolkit for Unix and Linux systems.
+
+PDBA_1_0_Win32.tar.gz
+This is the toolkit for Win32 systems.
+
+PDBA.ppd
+This is the file that allows ActiveStates Perl Package Manager
+( PPM ) to install the Perl DBA Toolkit.
+
+PDBAx-1.0.tar.gz
+This is the Unix and Linux version of the test code used in
+chapter 13 of the book.
+
+PDBAx_1_0_Win32.tar.gz
+This is the Win32 version of the test code used in
+chapter 13 of the book.
+
+PDBAx.ppd
+This is the file that allows ActiveStates Perl Package Manager
+( PPM ) to install the test code from Chapter 13.
+
+Be sure to read the README.pdba file for more information on
+installation and use of the toolkit.
+
+

@@ -1,0 +1,15 @@
+# launch window manager on remote machine
+# linux open tty and use xinit to make to secondary tty
+#At the command prompt, enter 'xinit -- :<x> VT<n>'. 
+# This tells the X-server to start a new instance using display number 
+#<x> and show it on Virtual Terminal <n>. 
+#For simplicity's sake, let's say <x> can be '2' to '6', and <n> can be '8' to '12'.
+
+# ctl-alt F2
+# login 
+# execute xinit -- :2 vt3
+# will create x display 0:2 on VT3
+# move to VT3 via CTL ALT F3
+
+cd ~/oracle/bin
+xterm -fg white -bg DarkSlateGray  -e ssh -i identity/id_rsa oracle@xa02db01 -X  twm &

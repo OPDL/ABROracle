@@ -1,0 +1,24 @@
+#!/bin/bash
+#set -x
+## process command line arguments
+if [ -z "$1" ]
+then
+echo "Syntax: $0 file addr [subject]"
+exit 1
+fi
+##############################################
+cd $(dirname ${0})
+source lib/orcl_lib
+HOST=oem01
+FROMUSER=orclmon
+##############################################
+ISFILE=$(fileExists "$1")
+# if using a file list
+if [[ $ISFILE = 1 ]]; then
+echo "File not found: $1"
+exit 1
+fi
+INFILE="${1}"
+CMD="mail -r \"${FROMUSER}\" -s \"${SUBJECT} `date +%F`\" adamrichards@elpasoco.com"
+cat ${INFILE} | ssh -X -i identity/id_rsa oracle@$HOST  ${CMD} 2> /dev/null
+exit 0

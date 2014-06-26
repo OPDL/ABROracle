@@ -1,0 +1,9 @@
+# white background
+ansi_black='\E[30;47m'
+ansi_red='\E[31;47m'
+ansi_green='\E[32;47m'
+ansi_yellow='\E[33;47m'
+ansi_blue='\E[34;47m'
+ansi_magenta='\E[35;47m'
+ansi_cyan='\E[36;47m'
+ansi_white='\E[37;47m'

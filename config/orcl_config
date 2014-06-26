@@ -1,0 +1,3 @@
+IDFILE="$HOME/safe/epc/identity/id_rsa_epc_oracle"
+DEF_HOSTFILE="$HOME/safe/epc/HOSTFILE"
+DEF_LISTENERFILE="$HOME/safe/epc/LISTENERFILE"

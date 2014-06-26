@@ -1,0 +1,123 @@
+
+Welcome to the Perl DBA toolkit.
+
+This code was developed and written as part of the book
+"Perl for Oracle DBA's", published by O'Reilly, 2002.
+
+The authors are Andy Duncan and Jared Still.
+
+The PDBA Toolkit is a collection of Perl modules and scripts
+that are of interest to the Oracle DBA.  There are scripts
+used to setup a password server for securely retrieving passwords
+over the network. ( pwd.conf, pwd.pl, pwc.pl pwc.conf )
+
+There are scripts to add and remove users, a script to dump
+schemas into CSV files complete with SQL*Loader control files
+for loading the data ( sqlunldr.pl ), and a variety of other
+things.
+
+There are a number of modules created in support of the scripts,
+and these can be used to develop your own scripts if you wish.
+
+PDBA::CM: Database Connection Manager
+PDBA::ConfigFile:  Configuration File locate and load
+PDBA::DBA: A number of methods to work with the Oracle Data Dictionary
+PDBA::Daemon: Create Daemons on unix systems
+PDBA::GQ:  The Generic Query module.  Simple module for single table queries
+PDBA::LogFile: Create logfiles and write time stamped log entries
+PDBA::OPT: Used to pass command line options to the PDBA::PWC module
+PDBA::PWC: Password server client module
+PDBA::PWD: Password server module
+PDBA::PidFile: Create locked semaphore files
+
+There are some Win32/NT specific versions of a few of these modules, and some
+of the scripts as well.  e.g. PWDNT.pm  
+
+The NT scripts and modules will only appear in the Win32 distribution of
+this toolkit, which can be identified by the inclusion of 'NT' in the file name.
+e.g. PDBA_1_0_Win32.tar.gz, whereas the unix distribution is PDBA-1.0.tar.gz
+
+The main source of documentation for this code is the book,
+we're not going to try and reproduce all of the documentation
+here, as we've already spent a fair amount of time on the 
+official documentation.
+
+There is quite a bit of documentation included in the modules themselves
+that may be viewed via 'perldoc'.  e.g. perldoc PDBA::CM
+
+Many of the scripts and modules make use of configuration files. These
+files are actually Perl code used to create data structures.  These
+are fairly well documented in the configuration files themselves.o
+
+Even if you don't know Perl well yet, these should be simple to setup.
+
+If you've ever setup a TNSNAMES.ORA file, you can setup these conf files.
+They're easy to check for syntactical correctness:  perl -cw myfile.conf
+
+Installation of the toolkit is fairly straightforward.
+
+On unix systems it's the standard:
+
+  perl Makefile.PL
+  make test
+  make install
+
+On Win32, just install via ActiveStage's PPM.
+
+Some of the tests need to run as a DBA account,
+or at least an account with 'select any table'
+
+Before running 'make test', set the environment
+variable ORACLE_USERID to the account name and
+password of a DBA account.
+
+e.g.
+
+unix:  export ORACLE_USERID='system/manager'
+
+win32: set ORACLE_USERID="system/manager"
+
+If you're on Win32, you may have problems with the Win32::TieRegistry module:
+
+Win32::TieRegistry errors
+"cannot FETCH blah, blah, blah at line 1486 of Tie::Registry.pm"
+Be sure to use a version of 0.24+.  0.23 will not work properly.
+
+Requirements:
+
+The following modules must be installed for the toolkit to work:
+
+DBI
+DBD::Oracle
+DDL::Oracle
+Crypt::RC4
+Date::Format
+Date::Manip
+Digest::MD5
+Mail::Sendmail
+
+These are all available via CPAN, http://search.cpan.org
+
+On Win32 systems, you must also have:
+Win32::Daemon
+
+This can be downloaded from CPAN, or from www.roth.net.
+
+Bugs, comments, change requests.
+
+Send requests for new functionality to pdbarfc@yahoo.com
+
+Send bug reports to pdbabugs@yahoo.com
+
+Patches are welcome for both. :)
+
+
+Note:
+
+There may be a number of scripts found  in the distribution 
+that don't appear in the book.  It wasn't possible to put
+everything in the book, and we keep coming up with new ideas
+for scripts.  :)
+
+
+

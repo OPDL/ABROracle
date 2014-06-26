@@ -1,0 +1,302 @@
+#!/bin/bash
+# Author: Adam Richards
+# set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+####################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $0 options
+Author: Adam Richards
+Test listener connectivity
+
+OPTIONS:
+-h      help
+-m      listenerfile
+-v      verbose (show connection descriptors)
+EOF
+}
+
+####################################
+# Listener File Format. Comments lines may be used.
+####################################
+WATCH_SEC=1
+# initialize argument variables
+LISTFILE=
+V=
+W=0
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hwvm:” OPTION
+do
+     case $OPTION in
+	 h)
+	     usage
+	     exit 1
+	     ;;
+	 m)
+	     LISTFILE=$OPTARG
+	     ;;
+	 v)
+	     V=1
+	     ;;
+	 w)
+	     W=1
+	     ;;
+	 ?)
+	     usage
+	     exit
+	     ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $LISTFILE ]] 
+then
+     usage
+     exit 1
+fi
+
+if [[ ! -f "${LISTFILE}" ]]; then
+    print "File not found: %s\n" "${LISTFILE}"
+    exit 1
+fi
+####################################
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+# connection formats
+# via RAC SCAN
+#sqlplus 'dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)))'
+# via RAC SCAN
+#sqlplus 'dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)(INSTANCE_NAME=epcdt1))'
+# via host local listener
+#sqlplus 'dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02db01.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SID=epcdt1)))'
+
+#EZCONNECT username@[//]host[:port][/[service_name][:server]][/instance_name]]
+#Enter password: password
+#The connect identifier converts to the following connect descriptor:
+# results file
+PID=$$
+RESULTFILE="/tmp/listcheck_${PID}_${TS}.txt"
+
+# RAC scan listener style
+CSTR_RAC='__U__/__P__@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__SCANHOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=__SERVICENAME__)))'
+# RAC scan listener style with instance specified
+CSTR_RAC_INSTANCE='__U__/__P__@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__SCANHOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=__SERVICENAME__)(INSTANCE_NAME=__INSTANCENAME__)))'
+# local listener style
+CSTR_LOCAL_SID='__U__/__P__@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__HOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SID=__SID__)))'
+CSTR_LOCAL_SERVICE='__U__/__P__@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__HOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=__SERVICENAME__)))'
+
+read -r -d '' SQL << 'EOT'
+REMARK Adam Richards
+SET NEWPAGE 0
+SET COLSEP '|' 
+SET LINESIZE 9999
+SET PAGESIZE 0
+SET ECHO OFF
+SET FEEDBACK OFF
+SET VERIFY OFF
+SET HEADING OFF
+SET MARKUP HTML OFF SPOOL OFF
+ALTER SESSION SET NLS_DATE_FORMAT ='YYYY-MM-DD HH24:MI:SS';
+select
+CAST(SYSDATE as VARCHAR2(20)) as "DT", 
+CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(15)) as "HOST",
+CAST('__NAME__' as VARCHAR(15)) AS "NAME",
+CAST('__TITLE__' as VARCHAR(25)) AS "TITLE",
+CAST('__SCANHOST__' as VARCHAR(25)) AS "SCAN HOST",
+CAST('__ETIME__' as VARCHAR(9)) AS "ETIMESEC",
+CAST(SYS_CONTEXT('USERENV','SERVICE_NAME') as VARCHAR2(20)) as "SERVICE_NAME",
+CAST(SYS_CONTEXT('USERENV','DB_NAME') as VARCHAR2(10)) as "DBNAME",
+CAST(instance_name as VARCHAR(10)) as "INSTANCE" 
+from v$instance;
+EOT
+####################################
+function printCSTR {
+printf "%s\n" "${1}" | perl -e 'while (<>) {$_=~s/\/.*@/@/g;print;}'
+}
+####################################
+function processResult {
+shopt -s nocasematch
+if [[ ! -z ${3} ]]; then
+ET=$(printf "%+9s" "${3}")
+else
+ET=$(printf "%+9s" " ")
+fi
+ERROR_REGEX='error|warn|^ORA-|^TNS-'
+R=$(cat "${1}")
+if [[ ${R} =~ $ERROR_REGEX ]]; then
+printf "%s: %s\n" "ERROR Connecting" "${2}"
+cat "${1}" | perl -e 'while (<>) {$_=~s/[ \t]+$//g;print "\t$_" if (!/^\s*$/);;}'
+else
+cat "${1}" | perl -e 'while (<>) {$_=~s/__ETIME__/'${ET}'/g;print "$_";}'
+#cat "${1}"
+fi
+}
+function convertsecs {
+    h=$(($1/3600))
+    m=$((($1/60)%60))
+    s=$(($1%60))
+    printf "%06d:%02d:%02d" $h $m $s
+}
+####################################
+# print header
+printf "%-20s|%-15s|%-15s|%-25s|%-25s|%-9s|%-20s|%-10s|%-10s\n" "DT" "HOST" "NAME" \
+"CONNECT TYPE" "SCAN HOST" "ETIMESEC" "SERVICE NAME" "DBNAME" "INSTANCE"
+####################################
+IFS=$'\r\n' RECORDS_ARRAY=($(cat "${LISTFILE}"))
+
+for RECORD in "${RECORDS_ARRAY[@]}" ; do 
+#ignore comment lines
+COMMENT_REGEX='^\s*#'
+if [[ ${RECORD} =~ $COMMENT_REGEX ]]; then
+continue
+fi
+IFS='|' read -ra RECORD_ARRAY <<< "${RECORD}"
+NAME=$(printf "%s" "${RECORD}" | cut -d'|' -f1 )
+HOSTLIST=$(printf "%s" "${RECORD}" | cut -d'|' -f2 )
+PORT=$(printf "%s" "${RECORD}" | cut -d'|' -f3 )
+SCANHOST=$(printf "%s" "${RECORD}" | cut -d'|' -f4 )
+SERVICENAME=$(printf "%s" "${RECORD}" | cut -d'|' -f5 )
+USERNAME=$(printf "%s" "${RECORD}" | cut -d'|' -f6 )
+PASSWORD=$(printf "%s" "${RECORD}" | cut -d'|' -f7 )
+
+IFS="," read -ra HOSTLIST_ARRAY <<< "${HOSTLIST}"
+NUMHOSTS=${#HOSTLIST_ARRAY[@]}
+
+if [[ ! -z $SCANHOST ]]; then
+
+# TEST SCAN
+	CSTR="${CSTR_RAC/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__SCANHOST__/$SCANHOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SERVICENAME__/$SERVICENAME}"
+	SQLT="${SQL/__TITLE__/Scan Listener}"
+	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
+	SQLT="${SQLT/__NAME__/$NAME}"
+STARTTIME=$(date +%s)
+	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR}  2> /dev/null > "${RESULTFILE}"
+ENDTIME=$(date +%s)
+ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+
+#ETIMESTR=$(convertsecs ${ETIMESEC})
+	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
+if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
+	processResult "${RESULTFILE}" "Listener SCAN Host ${HOST} Service: ${SERVICENAME} " "${ETIMESEC}"
+fi
+
+# TESTSCAN by INSTANCE
+for node in "${HOSTLIST_ARRAY[@]}" ; do
+	INSTANCE=$(printf "%s" "${node}" | cut -d':' -f2)
+	CSTR="${CSTR_RAC_INSTANCE/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__SCANHOST__/$SCANHOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SERVICENAME__/$SERVICENAME}"
+	CSTR="${CSTR/__INSTANCENAME__/$INSTANCE}"
+	SQLT="${SQL/__TITLE__/Scan Listener Instance}"
+	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
+	SQLT="${SQLT/__NAME__/$NAME}"
+STARTTIME=$(date +%s)
+	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR} > "${RESULTFILE}"
+ENDTIME=$(date +%s)
+ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+
+	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
+if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
+	processResult "${RESULTFILE}" "Listener SCAN Host ${HOST} Service: ${SERVICENAME} Instance: ${INSTANCE}" "${ETIMESEC}"
+fi
+done
+
+fi
+
+done
+
+# Local Listeners
+for RECORD in "${RECORDS_ARRAY[@]}" ; do 
+#ignore comment lines
+COMMENT_REGEX='^\s*#'
+if [[ ${RECORD} =~ $COMMENT_REGEX ]]; then
+continue
+fi
+IFS='|' read -ra RECORD_ARRAY <<< "${RECORD}"
+NAME=$(printf "%s" "${RECORD}" | cut -d'|' -f1 )
+HOSTLIST=$(printf "%s" "${RECORD}" | cut -d'|' -f2 )
+PORT=$(printf "%s" "${RECORD}" | cut -d'|' -f3 )
+SCANHOST=$(printf "%s" "${RECORD}" | cut -d'|' -f4 )
+SERVICENAME=$(printf "%s" "${RECORD}" | cut -d'|' -f5 )
+USERNAME=$(printf "%s" "${RECORD}" | cut -d'|' -f6 )
+PASSWORD=$(printf "%s" "${RECORD}" | cut -d'|' -f7 )
+
+IFS="," read -ra HOSTLIST_ARRAY <<< "${HOSTLIST}"
+NUMHOSTS=${#HOSTLIST_ARRAY[@]}
+for node in "${HOSTLIST_ARRAY[@]}" ; do
+if [[ ! -z $SERVICENAME ]]; then
+# TEST LOCAL LISTENER USING SERVICE NAME
+	HOST=$(printf "%s" "${node}" | cut -d':' -f1)
+	CSTR="${CSTR_LOCAL_SERVICE/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__HOST__/$HOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SERVICENAME__/$SERVICENAME}"
+	SQLT="${SQL/__TITLE__/Local Listener Service}"
+	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
+	SQLT="${SQLT/__NAME__/$NAME}"
+STARTTIME=$(date +%s)
+	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR}  2> /dev/null > "${RESULTFILE}"
+ENDTIME=$(date +%s)
+ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
+if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
+	processResult "${RESULTFILE}" "Local Listener Service Name. HOST: ${HOST} Service Name: ${SERVICENAME}" "${ETIMESEC}"
+fi
+else
+# TEST LOCAL LISTENER USING SID
+	HOST=$(printf "%s" "${node}" | cut -d':' -f1)
+	SID=$(printf "%s" "${node}" | cut -d':' -f2)
+	CSTR="${CSTR_LOCAL_SID/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__HOST__/$HOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SID__/$SID}"
+	SQLT="${SQL/__TITLE__/Local Listener SID}"
+	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
+	SQLT="${SQLT/__NAME__/$NAME}"
+STARTTIME=$(date +%s)
+	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR}  2> /dev/null > "${RESULTFILE}"
+ENDTIME=$(date +%s)
+ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
+if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
+	processResult "${RESULTFILE}" "Local Listener SID.  HOST: ${HOST} SID: ${SID} " "${ETIMESEC}"
+fi
+fi
+done
+done
+exit 0
+
+sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com\"
+sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com/epcdt1\"
+sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com/epcdt2\"
+
+sqlplus dsvrichards/****@\"xa02-scan.epc.com/epcdt.epc.com\" << 'EOT'
+select instance_name from v$instance;
+EOT
+
+sqlplus dsvrichards/****@\"xa02db01:1521/epcdt.epc.com\" << 'EOT'
+select instance_name from v$instance;
+EOT
+
+sqlplus dsvrichards/****@\"xa02db02:1521/epcdt.epc.com\" << 'EOT'
+select instance_name from v$instance;
+EOT

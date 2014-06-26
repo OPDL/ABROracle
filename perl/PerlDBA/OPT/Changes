@@ -1,0 +1,6 @@
+Revision history for Perl extension PDBA::OPT.
+
+0.01  Mon Nov 05 22:30:42 2001
+	- original version; created by h2xs 1.20 with options
+		-X -f PDBA::OPT
+

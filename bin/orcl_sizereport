@@ -1,0 +1,61 @@
+#!/bin/bash
+# set -x
+# DONT put spaces between assigment = signs
+## process command line arguments
+if [ -z "$1" ]
+then
+echo "Syntax: $0 host|hostlist"
+exit 1
+fi
+####################################
+cd $(dirname ${0})
+DAYS=30
+# greater than 500M
+MSIZE=500M
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+source lib/orcl_lib
+####################################
+# check if passed value is a file
+file "$1" > /dev/null 2>&1
+OK=$?
+if [[ $OK = 1 ]]; then
+HOSTLIST="$1"
+else
+echo "Collecting HOSTS from hostfile  $1"
+HOSTLIST=$(cat $1 | cut -s -d'|' -f1 |  tr '\r\n' ' ')
+fi
+
+for w in ${HOSTLIST}; do
+echo "HOST: $w"
+
+CMD="find /u01 -type f -mtime +$DAYS -name \"*.trc\" -ls 2> /dev/null | awk '{total += \$7 } END {print total}'"
+SIZE=$(ssh -q -i identity/id_rsa -t oracle@$w  "$CMD")
+SIZE=$(echo $SIZE | tr '\r\n' ' ')
+HSIZE=$(bytesToHuman $SIZE)
+printf "%-50s : %s\n" "Trace files total size older than $DAYS days" "$HSIZE"
+
+CMD="find /u01 -type f -mtime +$DAYS -name \"*.log\" -ls 2> /dev/null | awk '{total += \$7 } END {print total}'"
+SIZE=$(ssh -q -i identity/id_rsa -t oracle@$w  "$CMD")
+SIZE=$(echo $SIZE | tr '\r\n' ' ')
+HSIZE=$(bytesToHuman $SIZE)
+printf "%-50s : %s\n" "Log files total size older than $DAYS days" "$HSIZE"
+
+echo "Large files greater than $MSIZE "
+CMD="find /u01 -type f -size +$MSIZE -printf \"%s:%h/%f\\n\" 2> /dev/null | tr '\r\n' '|'"
+LIST=$(ssh -q -i identity/id_rsa -t oracle@$w  "$CMD")
+OIFS=$IFS
+IFS='|'
+read -a NLIST <<< "${LIST}"
+IFS=$OIFS
+for l in  ${NLIST[@]}; do
+SIZE=$(echo $l | cut -d: -f1)
+FILE=$(echo $l | cut -d: -f2)
+HSIZE=$(bytesToHuman $SIZE)
+printf "%-10s : %s\n" "$HSIZE" "$FILE"
+done
+echo ""	
+done
+
+exit 0

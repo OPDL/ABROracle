@@ -1,0 +1,8 @@
+#!/bin/bash
+# generate unique timestamp
+TS=$(date +%s)
+FILE=/tmp/mail_file_${TS}.txt
+orcl_alive HOSTLIST > ${FILE}
+orcl_diskreport HOSTLIST >> ${FILE}
+orcl_mailfile ${FILE}
+#rm ${FILE}

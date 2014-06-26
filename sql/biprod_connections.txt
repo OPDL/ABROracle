@@ -1,0 +1,56 @@
+>> xa02db01 biprod1:
+
+		   |INST|		|		     |		|		     |			  |				 |	  |	     |		|     |       |       |       |
+CURRENT DATE	   |  ID|INST_NAME	|MACHINE	     |TYPE	|OSUSER 	     |USERNAME		  |PROGRAM			 |STATUS  |FO_TYPE   |FO_METHOD |FO   |    SID|SPID   |SERIAL#|   PID
+-------------------|----|---------------|--------------------|----------|--------------------|--------------------|------------------------------|--------|----------|----------|-----|-------|-------|-------|------
+2014-06-23 09:11:46|   1|biprod1	|BIProd01	     |USER	|oracledev	     |BIPROD1_MDS	  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    235|1100   |  56121|   103
+2014-06-23 09:11:46|   1|biprod1	|BIProd01	     |USER	|oracledev	     |BIPROD1_MDS	  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    235|17593  |  56121|   103
+2014-06-23 09:11:46|   1|biprod1	|BIProd01	     |USER	|oracledev	     |BIPROD1_MDS	  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    401|4415   |   7219|   132
+2014-06-23 09:11:46|   1|biprod1	|BIProd01	     |USER	|oracledev	     |BIPROD1_MDS	  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    401|24719  |   7219|   132
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    137|1093   |   2931|   100
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    137|3007   |   2931|   100
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    367|3003   |  34041|    83
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    367|3437   |  34041|    83
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    732|11311  |   5613|    94
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    732|3005   |   5613|    94
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |     36|13296  |   8777|    97
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |     36|17421  |   8777|    97
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |     71|19879  |  18325|    98
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |     71|17423  |  18325|    98
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    102|1091   |  23759|    99
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    102|22671  |  23759|    99
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    137|3007   |   3383|   100
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    137|1093   |   3383|   100
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    170|27782  |   1119|   101
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    170|1096   |   1119|   101
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    202|1098   |    479|   102
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    202|26691  |    479|   102
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    234|17593  |   1127|   103
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    234|1100   |   1127|   103
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    270|30158  |    297|   104
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    270|1102   |    297|   104
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    629|1087   |   4549|    91
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01	     |USER	|dsvarmstrong	     |DACPROD		  |JDBC Thin Client		 |INACTIVE|NONE      |NONE	|NO   |    629|13298  |   4549|    91
+2014-06-23 09:11:46|   1|biprod1	|dsvtsf2409	     |USER	|dsvarmstrong	     |DWHPROD		  |SQL Developer		 |INACTIVE|NONE      |NONE	|NO   |    103|22671  |   3901|    99
+2014-06-23 09:11:46|   1|biprod1	|dsvtsf2409	     |USER	|dsvarmstrong	     |DWHPROD		  |SQL Developer		 |INACTIVE|NONE      |NONE	|NO   |    103|1091   |   3901|    99
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |     39|17421  |  10385|    97
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |     39|13296  |  10385|    97
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    202|26691  |    383|   102
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    202|1098   |    383|   102
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    565|13191  |    627|    89
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    565|27822  |    627|    89
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    639|13298  |   3479|    91
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    639|1087   |   3479|    91
+2014-06-23 09:11:46|   1|biprod1	|EPC\ETLPROD01	     |USER	|SYSTEM 	     |INFAPROD		  |pmrepagent.exe		 |INACTIVE|NONE      |NONE	|NO   |    705|4556   |     69|   141
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    764|28058  |    259|    95
+2014-06-23 09:11:46|   1|biprod1	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |    764|28346  |    259|    95
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |     70|25333  |  32917|    74
+2014-06-23 09:11:46|   2|biprod2	|ETLPROD01/10.31.4.85|USER	|ETLPROD01$	     |INFAPROD		  |JDBC Connect Client		 |INACTIVE|NONE      |NONE	|NO   |     70|24329  |  32917|    74
+2014-06-23 09:11:46|   2|biprod2	|EPC\ETLPROD01	     |USER	|SYSTEM 	     |INFAPROD		  |pmrepagent.exe		 |INACTIVE|NONE      |NONE	|NO   |    243|23953  |    269|   151
+2014-06-23 09:11:46|   2|biprod2	|EPC\ETLPROD01	     |USER	|SYSTEM 	     |INFAPROD		  |pmrepagent.exe		 |INACTIVE|NONE      |NONE	|NO   |    403|24719  |    711|   132
+2014-06-23 09:11:46|   2|biprod2	|EPC\ETLPROD01	     |USER	|SYSTEM 	     |INFAPROD		  |pmrepagent.exe		 |INACTIVE|NONE      |NONE	|NO   |    403|4415   |    711|   132
+2014-06-23 09:11:46|   2|biprod2	|EPC\ETLPROD01	     |USER	|SYSTEM 	     |INFAPROD		  |pmrepagent.exe		 |INACTIVE|NONE      |NONE	|NO   |    467|4402   |    163|   110
+2014-06-23 09:11:46|   2|biprod2	|EPC\ETLPROD01	     |USER	|SYSTEM 	     |INFAPROD		  |pmrepagent.exe		 |INACTIVE|NONE      |NONE	|NO   |    501|4407   |    191|   111
+
+48 rows selected.
+

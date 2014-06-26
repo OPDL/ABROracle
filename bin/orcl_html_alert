@@ -1,0 +1,85 @@
+#!/bin/bash
+# set -x
+# DONT put spaces between assigment = signs
+## process command line arguments
+if [ -z "$1" ]
+then
+echo "Syntax: $0 hostname [days]"
+exit 1
+fi
+if [ -z "$2" ]
+then 
+DAYS=1
+else
+DAYS="$2"
+fi
+# generate unique timestamp
+TS=$(date +%s)
+# Generate variable with sql command
+read -r -d '' SQL <<'EOF'
+SET MARKUP HTML ON SPOOL ON PREFORMAT OFF ENTMAP ON -
+HEAD "<TITLE>Alert Log Report</TITLE> -
+<STYLE type='text/css'> -
+<!-- BODY {background: #FFFFFF} --> -
+</STYLE>" -
+BODY "TEXT='#000000'" -
+TABLE "WIDTH='90%' BORDER='5'"
+
+--COLUMN DEPARTMENT_NAME HEADING 'DEPARTMENT' ENTMAP OFF
+--COLUMN CITY HEADING 'CITY'
+SET ECHO OFF
+-- Open the html file and insert header and start body
+SPOOL __REPORTFILE__
+
+select record_id, host_id, instance_id, originating_timestamp, message_text
+from X$DBGALERTEXT
+WHERE originating_timestamp > systimestamp -__DAYS__  AND regexp_like(message_text, '(ORA-|error)')
+;
+
+
+SPOOL OFF
+-- spool off will close the html file and close tags
+SET ECHO ON
+SET MARKUP HTML OFF SPOOL OFF
+exit
+EOF
+####################################
+HOST="$1"
+REPORTFILET="/tmp/alert_report___SID_____TS__.html"
+SQLFILET="/tmp/alert_report___SID_____TS__.sql"
+SQL="${SQL/__DAYS__/$DAYS}"
+
+FLIST=""
+CMD_NAME="GREP ORA-"
+CMD="grep -B2 -A3 ^ORA-"
+#SOURCE=DB_SIDS_XA01DB01
+#SOURCE="epcdt1 wcd1"
+echo "Collecting SIDs from host $HOST"
+SOURCE=$(ssh -q -i identity/id_rsa -t oracle@$HOST "cat /etc/oratab | egrep -iv '^#|agent' | cut -s -d: -f1 | sort | tr '\r\n' ' '")
+
+echo "Be patient. Some queries may take a few minutes"
+for w in ${SOURCE}; do 
+
+REPORTFILE="${REPORTFILET/__SID__/$w}"
+REPORTFILE="${REPORTFILE/__TS__/$TS}"
+SQLFILE="${SQLFILET/__SID__/$w}"
+SQLFILE="${SQLFILE/__TS__/$TS}"
+TSQL="${SQL/__REPORTFILE__/$REPORTFILE}"
+FLIST="${FLIST} ${REPORTFILE}"
+
+# save sql to local sql file
+echo "$TSQL" > "$SQLFILE"
+# send sql file to remote server
+scp -q -i identity/id_rsa "$SQLFILE" oracle@$HOST:"$SQLFILE"
+# run the sql
+echo "Scanning alert log view on host $HOST SID $w"
+ssh -q -i identity/id_rsa -t oracle@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv;sqlplus '/ as sysdba' @$SQLFILE" 1> /dev/null
+# get the results
+scp -q -i identity/id_rsa oracle@$HOST:"$REPORTFILE" "$REPORTFILE"
+
+#Cleanup?
+
+done
+
+firefox ${FLIST} &
+exit 0

@@ -1,0 +1,47 @@
+#!/bin/bash
+#set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+###################################
+## process command line arguments
+if [ -z "$1" ]
+then
+echo "Syntax: $0 host|hostfile"
+exit 1
+fi
+##############################################
+ISFILE=$(fileExists "$1")
+SHOST=$(echo "$1" | tr -s '[:lower:]' '[:upper:]')
+DEFAULT_COLOR="default"
+PROD_COLOR="prod"
+DEV_COLOR="dev"
+SUPPORT_COLOR="support"
+HOSTS=$(cat "${DEF_HOSTFILE}" |   tr '\r\n' ' ')
+for h in ${HOSTS}; do
+COLOR_SCHEME=$DEFAULT_COLOR
+HOST=$(echo $h | cut -s -d'|' -f1 | tr  '[:lower:]' '[:upper:]')
+TYPE=$(echo $h | cut -s -d'|' -f2 | tr  '[:lower:]' '[:upper:]')
+if [[ $TYPE = "PROD" ]]; then
+	COLOR_SCHEME="$PROD_COLOR"
+fi
+if [[ $TYPE = "DEV" ]]; then
+	COLOR_SCHEME="$DEV_COLOR"
+fi
+if [[ $TYPE = "SUPPORT" ]]; then
+	COLOR_SCHEME="$SUPPORT_COLOR"
+fi
+# if using a file list
+if [[ $ISFILE = 0 ]]; then
+	gnome-terminal  -e "ssh -X -i "${IDFILE}" oracle@$HOST" --window-with-profile=$COLOR_SCHEME &
+else
+	if [[ $SHOST = $HOST ]]; then 
+		gnome-terminal  -e "ssh -X -i "${IDFILE}" oracle@$HOST" --window-with-profile=$COLOR_SCHEME &
+	fi
+fi
+done
+exit 0

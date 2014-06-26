@@ -1,0 +1,121 @@
+#!/bin/bash
+#	 set -x
+# DONT put spaces between assigment = signs
+###############################################
+## process command line arguments
+if [ -z "$1" ];then
+echo "Syntax: $0 hostname [sid] [ts]"
+exit 1
+fi
+
+if [ -z "$2" ];then
+SIDNAME=''
+else
+SIDNAME="$2"
+fi
+
+if [ -z "$3" ];then 
+TSNAME=''
+else
+TSNAME="$3"
+fi
+###############################################
+# check if passed value is a file
+file "$1" > /dev/null 2>&1
+OK=$?
+if [[ $OK = 1 ]]; then
+HSOURCE="$1"
+else
+echo "Collecting HOSTS from hostfile  $1"
+HSOURCE=$(cat $1 | cut -s -d'|' -f1 |  tr '\r\n' ' ')
+fi
+###############################################
+# generate unique timestamp
+TS=$(date +%s)
+###############################################
+# Generate variable with sql command
+read -r -d '' SQLT <<'EOF'
+SET ECHO OFF
+set pagesize 9999
+set linesize 9999
+set feedback off
+set verify off 
+
+SPOOL __REPORTFILE__
+define m_tablespace = '__TSNAME__'
+ 
+select
+    file_id,
+    block_id,
+    block_id + blocks - 1   end_block,
+    owner,
+    segment_name,
+    partition_name,
+    segment_type
+from
+    dba_extents
+where
+    tablespace_name = '&m_tablespace'
+union all
+select
+    file_id,
+    block_id,
+    block_id + blocks - 1   end_block,
+    'free'          owner,
+    'free'          segment_name,
+    null            partition_name,
+    null            segment_type
+from
+    dba_free_space
+where
+    tablespace_name = '&m_tablespace'
+order by
+    1,2;
+
+SPOOL OFF
+SET ECHO ON
+exit
+EOF
+####################################
+REPORTFILET="/tmp/sql_report___SID_____TS__.txt"
+SQLFILET="/tmp/sql_report___SID_____TS__.sql"
+FINAL="/tmp/orcl_sql_report___TS__.txt"
+FINAL="${FINAL/__TS__/$TS}"
+FLIST=""
+
+for h in ${HSOURCE}; do
+if [[ $SIDNAME = '' ]]; then
+echo "Collecting SIDs from host $h"
+SIDS=$(ssh -q -i identity/id_rsa -t oracle@$h "cat /etc/oratab | egrep -iv '^#|agent' | cut -s -d: -f1 | sort | tr '\r\n' ' '")
+else
+SIDS=$SIDNAME
+fi
+
+for s in ${SIDS}; do 
+REPORTFILE="${REPORTFILET/__SID__/$s}"
+REPORTFILE="${REPORTFILE/__TS__/$TS}"
+SQLFILE="${SQLFILET/__SID__/$s}"
+SQLFILE="${SQLFILE/__TS__/$TS}"
+SQL="${SQLT/__REPORTFILE__/$REPORTFILE}"
+SQL="${SQL/__TSNAME__/$TSNAME}"
+FLIST="${FLIST} ${REPORTFILE}"
+
+
+# save sql to local sql file
+echo "$SQL" > "$SQLFILE"
+# send sql file to remote server
+scp -q -i identity/id_rsa "$SQLFILE" oracle@$h:"$SQLFILE"
+# run the sql
+echo "Running query on host $h SID $s"
+ssh -q -i identity/id_rsa -t oracle@$h "export ORACLE_SID=$s;export ORAENV_ASK=NO;. oraenv;sqlplus '/ as sysdba' @$SQLFILE" 1> /dev/null
+# get the results
+scp -q -i identity/id_rsa oracle@$h:"$REPORTFILE" "$REPORTFILE"
+
+#Cleanup?
+
+done
+done
+cat ${FLIST} | perl -e 'while (<>) {$_=~s/[ \t]+$//g;print;}' > $FINAL
+cat $FINAL
+
+exit 0

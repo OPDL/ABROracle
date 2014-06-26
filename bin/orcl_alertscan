@@ -1,0 +1,61 @@
+#!/bin/bash
+# set -x
+# DONT put spaces between assigment = signs
+## process command line arguments
+if [ -z "$1" ]
+then
+echo "Syntax: $0 hostname [sid]"
+echo "        $0 hostlist"
+exit 1
+fi
+if [ -z "$2" ]
+then 
+SID=0
+else
+SID="$2"
+fi
+##############################################
+cd $(dirname ${0})
+source lib/orcl_lib
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+ISFILE=$(fileExists "$1")
+####################################
+HOST="$1"
+FINAL="/tmp/orcl_sql_report___TS__.txt"
+FINAL="${FINAL/__TS__/$TS}"
+TFILE="/tmp/tmp___TS__.txt"
+TFILE="${TFILE/__TS__/$TS}"
+TFILE2="/tmp/tmp2___TS__.txt"
+TFILE2="${TFILE2/__TS__/$TS}"
+
+if [[ $ISFILE = 0 ]]; then
+HOSTLIST=$(collectHostsFromFile "$1")
+else
+HOSTLIST="$1"
+fi
+
+for HOST in ${HOSTLIST}; do
+if [[ $SID = 0 ]]; then
+SIDLIST=$(orcl_getsids $HOST)
+else
+SIDLIST="$SID"
+fi
+
+for S in ${SIDLIST}; do 
+echo "$HOST $S " 
+echo "$HOST $S " > ${TFILE}
+ssh -q -i identity/id_rsa -t oracle@$HOST "find /u01/app/oracle/diag 2> /dev/null | grep ${S} | grep alert | grep log.xml | xargs cat" | java -jar OrclAlert.jar - >> ${TFILE}
+cat ${TFILE} >> ${FINAL}
+done
+
+done
+
+cp ${FINAL} ${TFILE2}
+cat ${TFILE2} | perl -e 'while (<>) {$_=~s/[ \t]+$//g;print;}' > $FINAL
+cat ${FINAL}
+# cleanup
+rm ${TFILE} ${TFILE2}
+exit 0
+##############################################

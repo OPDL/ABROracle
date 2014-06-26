@@ -1,0 +1,159 @@
+#!/bin/bash
+# Author: Adam Richards
+# set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+####################################
+# process command line arguments
+usage()
+{
+cat << EOF
+usage: $0 options
+
+Scan Oracle ADRCI records
+
+OPTIONS:
+   -h      help
+   -m      host|hostfile 
+   -d      days [default=1]
+EOF
+}
+
+# initialize argument variables
+DAYS=1
+HOST=
+# options with : after them expect an argument
+while getopts “hm:d:” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         m)
+             HOST=$OPTARG
+             ;;
+         d)
+             DAYS=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+if [[ -z $HOST ]] || [[ -z $DAYS ]]
+then
+     usage
+     exit 1
+fi
+####################################
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+# set oracle ADRCI BASE
+B="/u01/app/oracle"
+####################################
+read -r -d ''  PERLSCRIPT << 'EOT'
+#!/usr/bin/perl
+$numArgs = $#ARGV + 1;
+
+my $LT=';;';
+my $type = "$ARGV[0]";
+my $fn   = "$ARGV[1]";
+my $of   = "$fn.tmp";
+my %datelist;
+
+open( FH, "$fn" ) || die "couldn't open input file\n";
+open (OFILE, ">$of") || die "faile to write to output file\n";
+
+my $regex; 
+$regex_lsnr = qr(^[\d]{2}-.{3}-[\d]{4});
+$regex_default = qr(^[\d]{4}-[\d]{2}-[\d]{2});
+$regex = $regex_default;
+if ($type=~m/tnslsnr/)
+{
+$regex=$regex_lsnr;
+}
+
+while ( <FH> ) {
+if ( $_ =~ s/($regex)/$LT$1/g ) {
+$datelist{$1}=1;
+}
+print OFILE $_;
+}
+ print OFILE "$LT" ;
+ close (OFILE); 
+close(FH);
+
+
+foreach my $key (keys(%datelist)) {
+    print "$key\n";
+}
+
+{
+local $/=$LT;
+open (FH1, "$of") || die "failed to open file $!\n";
+while ( <FH1> )
+{
+if ( m/warn|error|fatal|ORA-|TNS-/i )
+	{	
+	if ( $_ !~ m/orarom/i )
+		{
+		print ">> $_\n";
+		}
+	}
+}
+close(FH1);
+}
+EOT
+####################################
+PFILE=/tmp/adrci_perlscript_${TS}
+printf "%s\n" "${PERLSCRIPT}" > "${PFILE}"
+####################################
+if [[ -f ${HOST}  ]]; then
+	HOSTLIST=$(collectHostsFromFile "$HOST") 
+else
+	HOSTLIST="$HOST"
+fi
+
+#loop on host names
+for HOST in ${HOSTLIST}; do
+echo "HOST: $HOST"
+# collect sids
+SIDLIST=$(orcl_getsids $HOST)
+# get first sid. need it just to setup environment on remote machine
+SID=$(echo "${SIDLIST}" | cut -d' ' -f1)
+HOMESLIST=$(ssh -q -i "${IDFILE}" -t oracle@$HOST "export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null;adrci<<<\"SET BASE ${B};  SHOW HOMES -ALL\" | grep '^diag/' ")
+
+# printf "%s\n" "${HOMESLIST}"
+for H in ${HOMESLIST[@]}; do
+H=$(echo $H | tr '\r\n' ' ')
+HS=$(echo $H | tr '/' '.')
+OFILE=/tmp/adrci_${HOST}_${HS}_${TS}
+HOMETYPE=$(echo "${H}" | perl -n -e "m/diag\/(\w+)\//;print \$1;")
+
+printf "***************************** \n" "${HOST}"  "${H}"
+printf "***** Processing: %s %s ***** \n" "${HOST}"  "${H}"
+printf "HOME TYPE: %s\n" "${HOMETYPE}"
+printf "Output file: %s\n" ${OFILE}
+
+ADRCMD="adrci exec=\"set base ${B}; set home ${H}; show alert -term -p \\\"originating_timestamp > systimestamp-${DAYS}\\\"\" "
+# Escape Escapes in string to prepare for use in ssh string
+ADRCMD=${ADRCMD//\\/\\\\\\}
+ssh -q -i "${IDFILE}" -t oracle@$HOST "export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null;${ADRCMD}" >> ${OFILE}
+# Post Process data file
+perl "${PFILE}" "${HOMETYPE}" "${OFILE}"
+
+done
+done
+# Cleanup
+#rm /tmp/*${TS}*
+exit 0
+####################################

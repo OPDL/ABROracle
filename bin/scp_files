@@ -1,0 +1,1 @@
+scp -i identity/id_rsa oracle@xa02db01:/orabacklin/work/DATAPUMP/bin/*  ./

@@ -1,0 +1,45 @@
+#!/bin/bash
+#set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+###################################
+## process command line arguments
+if [ -z "$1" ]
+then
+echo "Syntax: $0 host|hostfile"
+exit 1
+fi
+##############################################
+xrdb -merge "${SWD}/../config/XSettings"
+##############################################
+ISFILE=$(fileExists "$1")
+SHOST=$(echo "$1" | tr -s '[:lower:]' '[:upper:]')
+HOSTS=$(cat "${DEF_HOSTFILE}" |   tr '\r\n' ' ')
+DEFAULT_COLOR="-fg white -bg black "
+PROD_COLOR="-fg white -bg orangered2 "
+DEV_COLOR="-fg grey20 -bg darkseagreen1 "
+for h in ${HOSTS}; do
+COLOR_SCHEME=$DEFAULT_COLOR
+HOST=$(echo $h | cut -s -d'|' -f1 | tr -s '[:lower:]' '[:upper:]')
+TYPE=$(echo $h | cut -s -d'|' -f2 | tr -s '[:lower:]' '[:upper:]')
+if [[ $TYPE = "PROD" ]]; then
+	COLOR_SCHEME="$PROD_COLOR"
+fi
+if [[ $TYPE = "DEV" ]]; then
+	COLOR_SCHEME="$DEV_COLOR"
+fi
+# if using a file list
+if [[ $ISFILE = 0 ]]; then
+	xterm $COLOR_SCHEME  -e ssh -X -i "${IDFILE}" oracle@$HOST &
+else
+	if [[ $SHOST = $HOST ]]; then 
+		xterm $COLOR_SCHEME  -e ssh -X -i "${IDFILE}" oracle@$HOST &
+	fi
+fi
+done
+exit 0

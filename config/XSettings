@@ -1,0 +1,6 @@
+XTerm*font:     *-fixed-*-*-*-18-*
+XTerm*boldFont: *-fixed-*-*-*-18-*
+XTerm*scrollBar:true
+XTerm*rightScrollBar: true
+XTerm*saveLines:1000
+XTerm.VT100.geometry:110x50

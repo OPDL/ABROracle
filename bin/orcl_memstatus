@@ -1,0 +1,28 @@
+#!/bin/bash
+# set -x
+# DONT put spaces between assigment = signs
+## process command line arguments
+if [ -z "$1" ]
+then
+echo "Syntax: $0 host|hostlist"
+exit 1
+fi
+####################################
+cd $(dirname ${0})
+####################################
+source lib/orcl_lib
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+OK=$(fileExists "$1")
+if [[ $OK = 1 ]]; then
+	HOSTLIST="$1"
+else
+	HOSTLIST=$(collectHostsFromFile $1)
+fi
+
+for HOST in ${HOSTLIST}; do
+ssh -q -i identity/id_rsa -t oracle@$HOST " perl - " < scripts/os_memfree
+done
+exit 0
+####################################

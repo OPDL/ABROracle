@@ -1,0 +1,64 @@
+#!/bin/bash
+# set -x
+# DONT put spaces between assigment = signs
+## process command line arguments
+if [ -z "$1" ] || [ -z "$2" ] 
+then
+echo "Syntax: $0 HOSTLIST|host cmdfile|cmdstring"
+exit 1
+fi
+##############################################
+cd $(dirname ${0})
+####################################
+exit
+source orcl_lib
+####################################
+# generate unique timestamp	
+TS=$(date +%s)
+# Generate variable with sql command
+read -r -d '' SQL <<'EOF'
+select getdate() from dual;
+EOF
+####################################
+HOST="$1"
+REPORTFILET="/tmp/orcl_sql___SID_____TS__.txt"
+SQLFILET="/tmp/orcl_sql___SID_____TS__.sql"
+FINAL="/tmp/orcl_sql_report___TS__.txt"
+FINAL="${FINAL/__TS__/$TS}"
+SQL="${SQL/__DAYS__/$DAYS}"
+
+FLIST=""
+
+if [[ $SID = 0 ]]; then
+echo "Collecting SIDs from host $HOST"
+SIDLIST=$(orcl_getsids $HOST)
+else
+SIDLIST="$SID"
+fi
+
+
+for w in ${SIDLIST}; do 
+
+REPORTFILE="${REPORTFILET/__SID__/$w}"
+REPORTFILE="${REPORTFILE/__TS__/$TS}"
+SQLFILE="${SQLFILET/__SID__/$w}"
+SQLFILE="${SQLFILE/__TS__/$TS}"
+TSQL="${SQL/__REPORTFILE__/$REPORTFILE}"
+FLIST="${FLIST} ${REPORTFILE}"
+
+# save sql to local sql file
+echo "$TSQL" > "$SQLFILE"
+# send sql file to remote server
+scp -q -i identity/id_rsa "$SQLFILE" oracle@$HOST:"$SQLFILE"
+# run the sql
+echo "Scanning host $HOST SID $w"
+#ssh -q -i identity/id_rsa -t oracle@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv;sqlplus '/ as sysdba' @$SQLFILE" 1> /dev/null
+# get the results
+scp -q -i identity/id_rsa oracle@$HOST:"$REPORTFILE" "$REPORTFILE"
+
+#Cleanup?
+done
+
+cat ${FLIST} | perl -e 'while (<>) {$_=~s/[ \t]+$//g;print;}' > $FINAL
+cat $FINAL
+exit 0
