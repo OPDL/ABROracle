@@ -1,35 +1,76 @@
 #!/bin/bash
-#	 set -x
-# DONT put spaces between assigment = signs
+# set -x
 ###############################################
-## process command line arguments
-if [ -z "$1" ];then
-echo "Syntax: $0 hostname [sid] [ts]"
-exit 1
-fi
+# get script directory
+SWD=$(dirname ${0})
+###############################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+###############################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $(basename $0) options
+Author: Adam Richards
+Check tablespaces for fragmentation.
 
-if [ -z "$2" ];then
-SIDNAME=''
-else
-SIDNAME="$2"
-fi
-
-if [ -z "$3" ];then 
-TSNAME=''
-else
-TSNAME="$3"
-fi
+OPTIONS:
+-h        help
+-m value  host|hostfile
+-s value  sid (optional)
+-v        verbose
+EOF
+}
 ###############################################
-# check if passed value is a file
-file "$1" > /dev/null 2>&1
-OK=$?
-if [[ $OK = 1 ]]; then
-HSOURCE="$1"
-else
-echo "Collecting HOSTS from hostfile  $1"
-HSOURCE=$(cat $1 | cut -s -d'|' -f1 |  tr '\r\n' ' ')
+# initialize argument variables
+HOSTFILE=
+SID=0
+V=
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hm:f:s:v” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         m)
+             HOSTFILE=$OPTARG
+             ;;
+         s)
+             SID=$OPTARG
+             ;;
+         v)
+             V=1
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $HOSTFILE ]]
+then
+     usage
+     exit 1
 fi
-###############################################
+####################################
+# check for idenfity file
+if [[ -z $IDFILE ]]; then
+    print "Identity File environment variable IDFILE not defined"
+    exit 1
+fi
+if [[ ! -f "${IDFILE}" ]]; then
+    print "Identity File not found: %s\n" "${IDFILE}"
+    exit 1
+fi
+####################################
 # generate unique timestamp
 TS=$(date +%s)
 ###############################################
@@ -86,7 +127,7 @@ FLIST=""
 for h in ${HSOURCE}; do
 if [[ $SIDNAME = '' ]]; then
 echo "Collecting SIDs from host $h"
-SIDS=$(ssh -q -i identity/id_rsa -t oracle@$h "cat /etc/oratab | egrep -iv '^#|agent' | cut -s -d: -f1 | sort | tr '\r\n' ' '")
+SIDS=$(ssh -q -i "${IDFILe}" -t oracle@$h "cat /etc/oratab | egrep -iv '^#|agent' | cut -s -d: -f1 | sort | tr '\r\n' ' '")
 else
 SIDS=$SIDNAME
 fi
@@ -104,7 +145,7 @@ FLIST="${FLIST} ${REPORTFILE}"
 # save sql to local sql file
 echo "$SQL" > "$SQLFILE"
 # send sql file to remote server
-scp -q -i identity/id_rsa "$SQLFILE" oracle@$h:"$SQLFILE"
+scp -q -i "${IDFILE}" "$SQLFILE" oracle@$h:"$SQLFILE"
 # run the sql
 echo "Running query on host $h SID $s"
 ssh -q -i identity/id_rsa -t oracle@$h "export ORACLE_SID=$s;export ORAENV_ASK=NO;. oraenv;sqlplus '/ as sysdba' @$SQLFILE" 1> /dev/null

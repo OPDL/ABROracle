@@ -7,6 +7,7 @@ SELECT
 CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(15)) as "HOST"
 ,CAST(SYS_CONTEXT('USERENV','DB_NAME') as VARCHAR2(10)) as "DBNAME"
 ,CAST(SYS_CONTEXT('USERENV','INSTANCE') as VARCHAR2(4)) as "INST" 
+,rc.tablespace_name as "TABLESPACE"
 ,col.owner 
 ,col.table_name
 ,col.col_cnt  AS column_count
@@ -15,7 +16,7 @@ CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(15)) as "HOST"
 FROM
   (
   /* number of columns */
-  SELECT upper(owner) owner, upper(table_name) table_name, COUNT(*) col_cnt
+  SELECT  upper(owner) owner, upper(table_name) table_name, COUNT(*) col_cnt
   FROM dba_tab_columns 
   where upper(owner) not in ('SYS','SYSTEM','DBSNMP','OUTLN','CTXSYS','EXFSYS','XDB','ODMRSYS','WMSYS')
   GROUP BY 
@@ -24,7 +25,7 @@ FROM
 JOIN
   (
   /* number of rows */
-select owner, table_name,
+select owner, table_name,tablespace_name,
        to_number(extractvalue(
                    dbms_xmlgen.getXMLtype ('select count(*) cnt from "'||owner||'"."'||table_name||'"'),
                    '/ROWSET/ROW/CNT')) row_cnt
