@@ -1,0 +1,109 @@
+#!/bin/bash
+# set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+####################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $(basename $0) options
+Author: Adam Richards
+Run an bash cmd file on multile hosts.
+
+OPTIONS:
+-h        help
+-m value  host|hostfile
+-f value  cmdfile
+-v        verbose
+EOF
+}
+
+####################################
+# initialize argument variables
+HOSTFILE=
+CMDFILE=
+SID=0
+V=
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hm:f:v” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         m)
+             HOSTFILE=$OPTARG
+             ;;
+         f)
+             CMDFILE=$OPTARG
+             ;;
+         s)
+             SID=$OPTARG
+             ;;
+         v)
+             ;;
+         v)
+             V=1
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $HOSTFILE ]]
+then
+     usage
+     exit 1
+fi
+
+if [[ -z $CMDFILE ]]
+then
+     usage
+     exit 1
+fi
+
+if [[ ! -f "${CMDFILE}" ]]; then
+    printf "File not found: %s\n" "${CMDFILE}"
+    exit 1
+fi
+
+####################################
+# check for idenfity file
+if [[ -z $IDFILE ]]; then
+    print "Identity File environment variable IDFILE not defined"
+    exit 1
+fi
+if [[ ! -f "${IDFILE}" ]]; then
+    printf "Identity File not found: %s\n" "${IDFILE}"
+    exit 1
+fi
+####################################
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+OK=$(fileExists "${HOSTFILE}")
+if [[ $OK = 1 ]]; then
+	HOSTLIST="${HOSTFILE}"
+else
+	HOSTLIST=$(collectHostsFromFile "${HOSTFILE}") 
+fi
+
+for HOST in ${HOSTLIST}; do
+echo "HOST: $HOST"
+ssh -q -i "${IDFILE}" -t oracle@$HOST  < "${CMDFILE}"
+echo ""
+done
+exit 0
+####################################

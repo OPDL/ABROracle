@@ -1,0 +1,114 @@
+#!/bin/bash
+# set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+####################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+####################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $(basename $0) options
+Author: Adam Richards
+Run file size check on multiple hosts. 
+
+OPTIONS:
+-h        help
+-m value  host|hostfile
+EOF
+}
+
+####################################
+# initialize argument variables
+HOSTFILE=
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hm:” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         m)
+             HOSTFILE=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $HOSTFILE ]]
+then
+     usage
+     exit 1
+fi
+####################################
+# check for idenfity file
+if [[ -z $IDFILE ]]; then
+    print "Identity File environment variable IDFILE not defined"
+    exit 1
+fi
+if [[ ! -f "${IDFILE}" ]]; then
+    print "Identity File not found: %s\n" "${IDFILE}"
+    exit 1
+fi
+####################################
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+# initilization value
+####################################
+DAYS=30
+# greater than 500M
+MSIZE=500M
+####################################
+# if hostfile variable is a file we
+# will read it for host info
+if [[ -f "${HOSTFILE}" ]]; then
+HOSTLIST=$(collectHostsFromFile "$HOSTFILE")
+else
+# the hostfile variable is a single hostname
+HOSTLIST="${HOSTFILE}"
+fi
+
+for w in ${HOSTLIST}; do
+echo "HOST: $w"
+
+CMD="find /u01 -type f -mtime +$DAYS -name \"*.trc\" -ls 2> /dev/null | awk '{total += \$7 } END {print total}'"
+SIZE=$(ssh -q -i "${IDFILE}" -t oracle@$w  "$CMD")
+SIZE=$(echo $SIZE | tr '\r\n' ' ')
+HSIZE=$(bytesToHuman $SIZE)
+printf "%-50s : %s\n" "Trace files total size older than $DAYS days" "$HSIZE"
+
+CMD="find /u01 -type f -mtime +$DAYS -name \"*.log\" -ls 2> /dev/null | awk '{total += \$7 } END {print total}'"
+SIZE=$(ssh -q -i "${IDFILE}" -t oracle@$w  "$CMD")
+SIZE=$(echo $SIZE | tr '\r\n' ' ')
+HSIZE=$(bytesToHuman $SIZE)
+printf "%-50s : %s\n" "Log files total size older than $DAYS days" "$HSIZE"
+
+echo "Large files greater than $MSIZE "
+CMD="find /u01 -type f -size +$MSIZE -printf \"%s:%h/%f\\n\" 2> /dev/null | tr '\r\n' '|'"
+LIST=$(ssh -q -i "${IDFILE}" -t oracle@$w  "$CMD")
+OIFS=$IFS
+IFS='|'
+read -a NLIST <<< "${LIST}"
+IFS=$OIFS
+for l in  ${NLIST[@]}; do
+SIZE=$(echo $l | cut -d: -f1)
+FILE=$(echo $l | cut -d: -f2)
+HSIZE=$(bytesToHuman $SIZE)
+printf "%-10s : %s\n" "$HSIZE" "$FILE"
+done
+echo ""	
+done
+
+exit 0

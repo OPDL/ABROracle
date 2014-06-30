@@ -1,0 +1,4 @@
+#!/bin/bash
+echo interactive sqlplus
+echo "rlsqlplus dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)))"
+
