@@ -1,22 +1,80 @@
 #!/bin/bash
 # set -x
-# DONT put spaces between assigment = signs
-## process command line arguments
-if [ -z "$1" ]
-then
-echo "Syntax: $0 hostname [sid]"
-echo "        $0 hostfile"
-exit 1
-fi
-if [ -z "$2" ]
-then 
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+####################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $(basename $0) options
+Author: Adam Richards
+Run an sql file on multile hosts and sids
+
+OPTIONS:
+-h        help
+-m value  host|hostfile
+-s value  sid (optional)
+-v        verbose
+EOF
+}
+
+####################################
+# initialize argument variables
+HOSTFILE=
 SID=0
-else
-SID="$2"
+V=
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hm:s:v” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         m)
+             HOSTFILE=$OPTARG
+             ;;
+         s)
+             SID=$OPTARG
+             ;;
+         v)
+             ;;
+         v)
+             V=1
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $HOSTFILE ]]
+then
+     usage
+     exit 1
 fi
-##############################################
-cd $(dirname ${0})
-source lib/orcl_lib
+
+####################################
+# check for idenfity file
+if [[ -z $IDFILE ]]; then
+    printf "Identity File environment variable IDFILE not defined"
+    exit 1
+fi
+if [[ ! -f "${IDFILE}" ]]; then
+    printf "Identity File not found: %s\n" "${IDFILE}"
+    exit 1
+fi
+####################################
 # generate unique timestamp
 TS=$(date +%s)
 ####################################
@@ -64,10 +122,10 @@ SELECT CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(20)) as "HOST", CAS
 exit
 EOF
 
-if [[ -f "${1}" ]]; then
-HOSTLIST=$(collectHostsFromFile "$1")
+if [[ -f "${HOSTFILE}" ]]; then
+HOSTLIST=$(collectHostsFromFile "${HOSTFILE}")
 else
-HOSTLIST="$1"
+HOSTLIST="${HOSTFILE}"
 fi
 
 for HOST in ${HOSTLIST}; do
@@ -79,9 +137,6 @@ fi
 echo "${HOST}- SIDS: ${SIDLIST}"
 
 for w in ${SIDLIST}; do 
-#cat sql/alive.sql | ssh -q -i identity/id_rsa -t oracle@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >  ${TFILE} 
-# printf "%s %s:\n" "${HOST}" "${w}" > "${TFILE}"
-
 # check if asm instance
 M=$(echo "${w}" | perl -n -e "print if (m/^\+ASM/ig);")
 if [[ -z $M ]]; then
@@ -89,7 +144,7 @@ TSQL="${SQL}"
 else
 TSQL="${SQLASM}"
 fi
-printf "%s\n" "${TSQL}" | ssh -q -i identity/id_rsa -t oracle@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >  ${TFILE} 
+printf "%s\n" "${TSQL}" | ssh -q -i "${IDFILE}" -t oracle@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >  ${TFILE} 
 
 grep -q -i -e "^ORA-" "${TFILE}"
 OK=$?

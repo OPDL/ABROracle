@@ -74,7 +74,7 @@ then
 fi
 
 if [[ ! -f "${SQLFILE}" ]]; then
-    print "File not found: %s\n" "${SQLFILE}"
+    printf "File not found: %s\n" "${SQLFILE}"
     exit 1
 fi
 
@@ -85,7 +85,7 @@ if [[ -z $IDFILE ]]; then
     exit 1
 fi
 if [[ ! -f "${IDFILE}" ]]; then
-    print "Identity File not found: %s\n" "${IDFILE}"
+    printf "Identity File not found: %s\n" "${IDFILE}"
     exit 1
 fi
 ####################################
