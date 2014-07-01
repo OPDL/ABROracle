@@ -1,7 +1,5 @@
 #!/bin/bash
 # set -x
-# DONT put spaces between assigment = signs
-## process command line arguments
 if [ -z "$1" ]
 then
 echo "Syntax: $0 hostname [sid]"

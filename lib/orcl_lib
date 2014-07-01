@@ -25,4 +25,14 @@ file "$1" > /dev/null 2>&1
 echo $?
 }
 ####################################
-
+function assertIdentityFile {
+if [[ -z "${ORCL_SSHIDFILE}" ]]; then
+    print "Identity File environment variable ORCL_SSHIDFILE not defined"
+    exit 1
+fi
+if [[ ! -f "${ORCL_SSHIDFILE}" ]]; then
+    printf "Identity File not found: %s\n" "${ORCL_SSHIDFILE}"
+    exit 1
+fi
+}
+####################################

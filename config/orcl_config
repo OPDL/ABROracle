@@ -1,3 +1,5 @@
-IDFILE="$HOME/safe/epc/identity/id_rsa_epc_oracle"
-DEF_HOSTFILE="$HOME/safe/epc/HOSTFILE"
-DEF_LISTENERFILE="$HOME/safe/epc/LISTENERFILE"
+# env variable config for orcl script files
+ORCL_SSHIDFILE="$HOME/safe/epc/identity/id_rsa_epc_oracle"
+ORCL_SSHUSER="oracle"
+ORCL_HOSTFILE="$HOME/safe/epc/HOSTFILE"
+ORCL_LISTENERFILE="$HOME/safe/epc/LISTENERFILE"

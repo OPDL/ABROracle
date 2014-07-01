@@ -1,4 +1,21 @@
 #!/bin/bash
-echo interactive sqlplus
-echo "rlsqlplus dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)))"
+cat $0
+interactive sqlplus
+rlsqlplus dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)))
+
+sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com\"
+sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com/epcdt1\"
+sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com/epcdt2\"
+
+sqlplus dsvrichards/****@\"xa02-scan.epc.com/epcdt.epc.com\" << 'EOT'
+select instance_name from v$instance;
+EOT
+
+sqlplus dsvrichards/****@\"xa02db01:1521/epcdt.epc.com\" << 'EOT'
+select instance_name from v$instance;
+EOT
+
+sqlplus dsvrichards/****@\"xa02db02:1521/epcdt.epc.com\" << 'EOT'
+select instance_name from v$instance;
+EOT
 

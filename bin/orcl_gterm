@@ -15,13 +15,15 @@ echo "Syntax: $0 host|hostfile"
 exit 1
 fi
 ##############################################
+assertIdentityFile
+##############################################
 ISFILE=$(fileExists "$1")
 SHOST=$(echo "$1" | tr -s '[:lower:]' '[:upper:]')
 DEFAULT_COLOR="default"
 PROD_COLOR="prod"
 DEV_COLOR="dev"
 SUPPORT_COLOR="support"
-HOSTS=$(cat "${DEF_HOSTFILE}" |   tr '\r\n' ' ')
+HOSTS=$(cat "${ORCL_HOSTFILE}" |   tr '\r\n' ' ')
 for h in ${HOSTS}; do
 COLOR_SCHEME=$DEFAULT_COLOR
 HOST=$(echo $h | cut -s -d'|' -f1 | tr  '[:lower:]' '[:upper:]')
@@ -37,10 +39,10 @@ if [[ $TYPE = "SUPPORT" ]]; then
 fi
 # if using a file list
 if [[ $ISFILE = 0 ]]; then
-	gnome-terminal  -e "ssh -X -i "${IDFILE}" oracle@$HOST" --window-with-profile=$COLOR_SCHEME &
+	gnome-terminal  -e "ssh -X -i "${ORCL_SSHIDFILE}" "${ORCL_SSHUSER}"@$HOST" --window-with-profile=$COLOR_SCHEME &
 else
 	if [[ $SHOST = $HOST ]]; then 
-		gnome-terminal  -e "ssh -X -i "${IDFILE}" oracle@$HOST" --window-with-profile=$COLOR_SCHEME &
+		gnome-terminal  -e "ssh -X -i "${ORCL_SSHIDFILE}" "${ORCL_SSHUSER}"@$HOST" --window-with-profile=$COLOR_SCHEME &
 	fi
 fi
 done

@@ -1,6 +1,16 @@
 #!/bin/bash
 # set -x
 ####################################
+# get SID list from remote machine.
+# Author: Adam Richards
+#
+# uses /etc/oratab
+# ignores lines starting with #,
+# contain agent, or # ignore and
+# +ASM*
+# add argument "asm" to include +ASM*
+# SIDS
+####################################
 # get script directory
 SWD=$(dirname ${0})
 ###################################
@@ -10,11 +20,18 @@ source "${SWD}/../lib/orcl_lib"
 ###################################
 if [ -z "$1" ]
 then
-echo "Syntax: $0 hostname"
+echo "Syntax: $0 hostname [asm]"
 exit 1
 fi
-HOST=$1
-SIDS=$(ssh -q -i "${IDFILE}" -t oracle@$HOST "cat /etc/oratab | egrep -iv '^#|agent|\+ASM|#\s*ignore' | cut -s -d: -f1 | sort | tr '\r\n' ' '")
-echo $SIDS
+###################################
+HOST="${1}"
+SIDS=$(ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${HOST}" "cat /etc/oratab")
+SIDS=$(echo "${SIDS}" | egrep -iv '^#|agent|#\s*ignore' | cut -s -d: -f1 )
+if [ ! "${2}" == "asm" ]
+then
+SIDS=$(echo "${SIDS}" | egrep -iv '\+ASM' )
+fi
+SIDS=$(echo "${SIDS}" | sort | tr '\r\n' ' ')
+echo "${SIDS}"
 exit 0
 ####################################

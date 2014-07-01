@@ -15,11 +15,13 @@ echo "Syntax: $0 host|hostfile"
 exit 1
 fi
 ##############################################
+assertIdentityFile
+##############################################
 xrdb -merge "${SWD}/../config/XSettings"
 ##############################################
 ISFILE=$(fileExists "$1")
 SHOST=$(echo "$1" | tr -s '[:lower:]' '[:upper:]')
-HOSTS=$(cat "${DEF_HOSTFILE}" |   tr '\r\n' ' ')
+HOSTS=$(cat "${ORCL_HOSTFILE}" |   tr '\r\n' ' ')
 DEFAULT_COLOR="-fg white -bg black "
 PROD_COLOR="-fg white -bg orangered2 "
 DEV_COLOR="-fg grey20 -bg darkseagreen1 "
@@ -35,10 +37,10 @@ if [[ $TYPE = "DEV" ]]; then
 fi
 # if using a file list
 if [[ $ISFILE = 0 ]]; then
-	xterm $COLOR_SCHEME  -e ssh -X -i "${IDFILE}" oracle@$HOST &
+	xterm $COLOR_SCHEME  -e ssh -X -i "${ORCL_SSHIDFILE}" "${ORCL_SSHUSER}"@"${HOST}" &
 else
 	if [[ $SHOST = $HOST ]]; then 
-		xterm $COLOR_SCHEME  -e ssh -X -i "${IDFILE}" oracle@$HOST &
+		xterm $COLOR_SCHEME  -e ssh -X -i "${ORCL_SSHIDFILE}" "${ORCL_SSHUSER}"@"${HOST}" &
 	fi
 fi
 done
