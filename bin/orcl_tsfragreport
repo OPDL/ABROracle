@@ -61,15 +61,7 @@ then
      exit 1
 fi
 ####################################
-# check for idenfity file
-if [[ -z $IDFILE ]]; then
-    print "Identity File environment variable IDFILE not defined"
-    exit 1
-fi
-if [[ ! -f "${IDFILE}" ]]; then
-    print "Identity File not found: %s\n" "${IDFILE}"
-    exit 1
-fi
+assertIdentityFile
 ####################################
 # generate unique timestamp
 TS=$(date +%s)

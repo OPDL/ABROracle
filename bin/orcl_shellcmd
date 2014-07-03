@@ -80,15 +80,7 @@ if [[ ! -f "${CMDFILE}" ]]; then
 fi
 
 ####################################
-# check for idenfity file
-if [[ -z $IDFILE ]]; then
-    print "Identity File environment variable IDFILE not defined"
-    exit 1
-fi
-if [[ ! -f "${IDFILE}" ]]; then
-    printf "Identity File not found: %s\n" "${IDFILE}"
-    exit 1
-fi
+assertIdentityFile
 ####################################
 # generate unique timestamp
 TS=$(date +%s)
@@ -102,7 +94,7 @@ fi
 
 for HOST in ${HOSTLIST}; do
 echo "HOST: $HOST"
-ssh -q -i "${IDFILE}" -t oracle@$HOST  < "${CMDFILE}"
+ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${HOST}"  < "${CMDFILE}"
 echo ""
 done
 exit 0

@@ -57,6 +57,8 @@ fi
 # generate unique timestamp
 TS=$(date +%s)
 ####################################
+assertIdentityFile
+####################################
 # set oracle ADRCI BASE
 B="/u01/app/oracle"
 ####################################
@@ -130,7 +132,7 @@ echo "HOST: $HOST"
 SIDLIST=$(orcl_getsids $HOST)
 # get first sid. need it just to setup environment on remote machine
 SID=$(echo "${SIDLIST}" | cut -d' ' -f1)
-HOMESLIST=$(ssh -q -i "${IDFILE}" -t oracle@$HOST "export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null;adrci<<<\"SET BASE ${B};  SHOW HOMES -ALL\" | grep '^diag/' ")
+HOMESLIST=$(ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${HOST}" "export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null;adrci<<<\"SET BASE ${B};  SHOW HOMES -ALL\" | grep '^diag/' ")
 
 # printf "%s\n" "${HOMESLIST}"
 for H in ${HOMESLIST[@]}; do
@@ -147,7 +149,7 @@ printf "Output file: %s\n" ${OFILE}
 ADRCMD="adrci exec=\"set base ${B}; set home ${H}; show alert -term -p \\\"originating_timestamp > systimestamp-${DAYS}\\\"\" "
 # Escape Escapes in string to prepare for use in ssh string
 ADRCMD=${ADRCMD//\\/\\\\\\}
-ssh -q -i "${IDFILE}" -t oracle@$HOST "export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null;${ADRCMD}" >> ${OFILE}
+ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${HOST}" "export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null;${ADRCMD}" >> ${OFILE}
 # Post Process data file
 perl "${PFILE}" "${HOMETYPE}" "${OFILE}"
 

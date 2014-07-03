@@ -52,15 +52,7 @@ then
      exit 1
 fi
 ####################################
-# check for idenfity file
-if [[ -z $IDFILE ]]; then
-    print "Identity File environment variable IDFILE not defined"
-    exit 1
-fi
-if [[ ! -f "${IDFILE}" ]]; then
-    print "Identity File not found: %s\n" "${IDFILE}"
-    exit 1
-fi
+assertIdentityFile
 ####################################
 # generate unique timestamp
 TS=$(date +%s)
@@ -84,20 +76,20 @@ for w in ${HOSTLIST}; do
 echo "HOST: $w"
 
 CMD="find /u01 -type f -mtime +$DAYS -name \"*.trc\" -ls 2> /dev/null | awk '{total += \$7 } END {print total}'"
-SIZE=$(ssh -q -i "${IDFILE}" -t oracle@$w  "$CMD")
+SIZE=$(ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${w}"  "$CMD")
 SIZE=$(echo $SIZE | tr '\r\n' ' ')
 HSIZE=$(bytesToHuman $SIZE)
 printf "%-50s : %s\n" "Trace files total size older than $DAYS days" "$HSIZE"
 
 CMD="find /u01 -type f -mtime +$DAYS -name \"*.log\" -ls 2> /dev/null | awk '{total += \$7 } END {print total}'"
-SIZE=$(ssh -q -i "${IDFILE}" -t oracle@$w  "$CMD")
+SIZE=$(ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${w}"  "$CMD")
 SIZE=$(echo $SIZE | tr '\r\n' ' ')
 HSIZE=$(bytesToHuman $SIZE)
 printf "%-50s : %s\n" "Log files total size older than $DAYS days" "$HSIZE"
 
 echo "Large files greater than $MSIZE "
 CMD="find /u01 -type f -size +$MSIZE -printf \"%s:%h/%f\\n\" 2> /dev/null | tr '\r\n' '|'"
-LIST=$(ssh -q -i "${IDFILE}" -t oracle@$w  "$CMD")
+LIST=$(ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${w}"  "$CMD")
 OIFS=$IFS
 IFS='|'
 read -a NLIST <<< "${LIST}"

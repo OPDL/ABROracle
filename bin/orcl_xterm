@@ -25,6 +25,7 @@ HOSTS=$(cat "${ORCL_HOSTFILE}" |   tr '\r\n' ' ')
 DEFAULT_COLOR="-fg white -bg black "
 PROD_COLOR="-fg white -bg orangered2 "
 DEV_COLOR="-fg grey20 -bg darkseagreen1 "
+##############################################
 for h in ${HOSTS}; do
 COLOR_SCHEME=$DEFAULT_COLOR
 HOST=$(echo $h | cut -s -d'|' -f1 | tr -s '[:lower:]' '[:upper:]')
@@ -44,4 +45,6 @@ else
 	fi
 fi
 done
+##############################################
 exit 0
+##############################################

@@ -23,7 +23,6 @@ OPTIONS:
 -v        verbose
 EOF
 }
-
 ####################################
 # initialize argument variables
 HOSTFILE=
@@ -65,15 +64,7 @@ then
 fi
 
 ####################################
-# check for idenfity file
-if [[ -z $IDFILE ]]; then
-    printf "Identity File environment variable IDFILE not defined"
-    exit 1
-fi
-if [[ ! -f "${IDFILE}" ]]; then
-    printf "Identity File not found: %s\n" "${IDFILE}"
-    exit 1
-fi
+assertIdentityFile
 ####################################
 # generate unique timestamp
 TS=$(date +%s)
@@ -130,7 +121,7 @@ fi
 
 for HOST in ${HOSTLIST}; do
 if [[ $SID = 0 ]]; then
-SIDLIST=$(orcl_getsids_asm $HOST)
+SIDLIST=$(orcl_getsids $HOST asm)
 else
 SIDLIST="$SID"
 fi
@@ -144,7 +135,7 @@ TSQL="${SQL}"
 else
 TSQL="${SQLASM}"
 fi
-printf "%s\n" "${TSQL}" | ssh -q -i "${IDFILE}" -t oracle@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >  ${TFILE} 
+printf "%s\n" "${TSQL}" | ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${HOST}" "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >  ${TFILE} 
 
 grep -q -i -e "^ORA-" "${TFILE}"
 OK=$?
