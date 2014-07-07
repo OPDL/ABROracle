@@ -1,0 +1,11 @@
+#!/bin/bash
+#set -x
+# pull all ASR files over for import
+TARGETDIR=/orabacklin/work/SQLLDR/permits/data/queue
+smbclient -A epcauth //sunlight/internalftp$ -c "cd ASR_Copy/RBD; prompt; lcd ${TARGETDIR}; mget ASRFILE_*.TXT "
+OK=$?
+if [[ $OK != 0 ]]; then
+printf "%s\n" "smbclient call failed."
+exit 1
+fi
+exit 0

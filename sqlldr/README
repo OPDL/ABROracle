@@ -1,0 +1,5 @@
+# ADAM RICHARDS
+Script to pull flat files from windows share to staging area
+for loading into oracle database.
+This script may be called via ssh from a remote node.
+
