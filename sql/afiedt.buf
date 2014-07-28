@@ -1,3 +1,0 @@
-SELECT query_wait(10)
- FROM dual
-/
