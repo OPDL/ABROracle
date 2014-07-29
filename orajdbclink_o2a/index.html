@@ -1,0 +1,594 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+	<TITLE>Oracle JDBC DBLink</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 2.4  (Linux)">
+	<META NAME="CREATED" CONTENT="20070611;17494400">
+	<META NAME="CHANGEDBY" CONTENT="Andrea Gariboldi">
+	<META NAME="CHANGED" CONTENT="20090521;9410300">
+	<META NAME="KEYWORDS" CONTENT="orajdbclink, java, jdbc, pl/sql, oracle, database, database link, dblink, sql server, mysql, postgre, sybase, derby, connect, query, cursor, stored procedures">
+	<STYLE TYPE="text/css">
+	<!--
+		@page { size: 21cm 29.7cm; margin: 2cm }
+		P { margin-bottom: 0.21cm }
+		H1 { margin-bottom: 0.21cm }
+		H1.western { font-family: "Bitstream Vera Sans", sans-serif; font-size: 16pt }
+		H1.cjk { font-family: "Bitstream Vera Sans"; font-size: 16pt }
+		H1.ctl { font-family: "Bitstream Vera Sans"; font-size: 16pt }
+		H2 { margin-bottom: 0.21cm }
+		H2.western { font-family: "Bitstream Vera Sans", sans-serif; font-size: 14pt; font-style: italic }
+		H2.cjk { font-family: "HG Mincho Light J"; font-size: 14pt; font-style: italic }
+		H2.ctl { font-family: "Arial Unicode MS"; font-size: 14pt; font-style: italic }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="it-IT" DIR="LTR">
+<H1 CLASS="western">orajdbclink</H1>
+<P><BR><BR>
+</P>
+<H2 CLASS="western">What is ?</H2>
+<P><BR><BR>
+</P>
+<P>A simple and flexible way to get data from any jdbc reachable
+database.</P>
+<P>For example you can easly create an oracle view (materialized or
+not), from</P>
+<P>a query performed directly on a Microsoft SQL Server (for example,
+but may be MySQL, PostGre, or an old version of Oracle 
+</P>
+<P>like 7.3.4 no more reachable from dblinks) via JDBC. 
+</P>
+<P>You will end up doing something like:</P>
+<P><BR><BR>
+</P>
+<P>SQL*Plus: Release 10.2.0.1.0 - Production on Sat Sep 15 11:14:42
+2007</P>
+<P>Copyright (c) 1982, 2005, Oracle. All rights reserved.</P>
+<P>Connected to:</P>
+<P>Oracle Database 10g Release 10.2.0.2.0 - Production</P>
+<P><BR><BR>
+</P>
+<P>SQL&gt; <B>select code, description from table(mysqlsrv.view_item)
+where code= '001'</B></P>
+<H2 CLASS="western"></H2>
+<P>Where <B>mysqlsrv.view_item</B> is a pipe lined pl/sql function
+using orajdbclink api to return records:</P>
+<P><BR><BR>
+</P>
+<P STYLE="margin-bottom: 0cm; font-weight: medium"><FONT COLOR="#000080"><FONT FACE="Monospace"><FONT SIZE=2>--
+create a package for pipelined views in your application schema</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000080"><FONT FACE="Monospace"><FONT SIZE=2>--
+NOTE: first grant all on orajdbclink_o2a.jcursor to &lt;your
+application schema&gt;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">create</FONT><FONT COLOR="#000000">
+</FONT><FONT COLOR="#800000">or</FONT><FONT COLOR="#000000"> </FONT><FONT COLOR="#800000">replace</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">package</FONT><FONT COLOR="#000000">
+MYSQLSRV </FONT><FONT COLOR="#800000">as</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>type
+view_item_record <FONT COLOR="#800000">is</FONT> record</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>(</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>code
+<FONT COLOR="#800000">varchar</FONT>2(255),</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>description
+<FONT COLOR="#800000">varchar</FONT>2(2000)</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>);</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>type
+view_item_table <FONT COLOR="#800000">is</FONT> <FONT COLOR="#800000">table</FONT>
+<FONT COLOR="#800000">of</FONT> view_item_record;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>function
+view_item</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>return
+view_item_table</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>pipelined;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>function
+view_item_by_code(p_code varchar2)</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>return
+view_item_table</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>pipelined;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">
+MYSQLSRV;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>/</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">create</FONT><FONT COLOR="#000000">
+</FONT><FONT COLOR="#800000">or</FONT><FONT COLOR="#000000"> </FONT><FONT COLOR="#800000">replace</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">package</FONT><FONT COLOR="#000000">
+body MYSQLSRV </FONT><FONT COLOR="#800000">as</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>function
+view_item</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>return
+view_item_table</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>pipelined</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>as</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor
+orajdbclink_o2a.jcursor:= orajdbclink_o2a.jcursor(<FONT COLOR="#0000ff">'select
+code, description from item_table'</FONT>,<FONT COLOR="#0000ff">'MYSQLSRV'</FONT>,2);
+<FONT COLOR="#000080"><B>--define the cursor query</B></FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_record
+view_item_record;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>begin</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.init;
+<FONT COLOR="#000080">-- open connection, and prepare query</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.<FONT COLOR="#800000">open</FONT>;
+<FONT COLOR="#000080">-- execute query</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>while
+v_cursor.dofetch = 1 loop <FONT COLOR="#000080">-- fetch query
+results into your view record</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_record.code:=
+v_cursor.get_string(1); <FONT COLOR="#000080">-- code</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_record.description:=
+v_cursor.get_string(2); <FONT COLOR="#000080">-- description</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>pipe
+<FONT COLOR="#800000">row</FONT> (v_record); <FONT COLOR="#000080">--
+pipe row to the query</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">
+loop;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.<FONT COLOR="#800000">close</FONT>;
+<FONT COLOR="#000080">-- close resources</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>exception</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">when</FONT><FONT COLOR="#000000">
+others </FONT><FONT COLOR="#800000">then</FONT><FONT COLOR="#000000">
+</FONT><FONT COLOR="#000080">-- if something happens</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.<FONT COLOR="#800000">close</FONT>;
+<FONT COLOR="#000080">-- close resources</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>raise;
+<FONT COLOR="#000080">-- raise the exception</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>function
+view_item_by_code(p_code varchar2)</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>return
+view_item_table</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>pipelined</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>as</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor
+orajdbclink_o2a.jcursor:= orajdbclink_o2a.jcursor(<FONT COLOR="#0000ff">'select
+code, description from item_table where code= ?'</FONT>,<FONT COLOR="#0000ff">'MYSQLSRV'</FONT>,2);
+<FONT COLOR="#000080"><B>--define the cursor query</B></FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_record
+view_item_record;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>begin</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.init;
+<FONT COLOR="#000080">-- open connection, and prepare query</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.<FONT COLOR="#800000">open</FONT>;
+<FONT COLOR="#000080">-- execute query</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.bind(1,p_code);
+<FONT COLOR="#000080">-- bind code variable</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>while
+v_cursor.dofetch = 1 loop <FONT COLOR="#000080">-- fetch query
+results into your view record</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_record.code:=
+v_cursor.get_string(1); <FONT COLOR="#000080">-- code</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_record.description:=
+v_cursor.get_string(2); <FONT COLOR="#000080">-- description</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>pipe
+<FONT COLOR="#800000">row</FONT> (v_record); <FONT COLOR="#000080">--
+pipe row to the query</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">
+loop;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.<FONT COLOR="#800000">close</FONT>;
+<FONT COLOR="#000080">-- close resources</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>exception</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">when</FONT><FONT COLOR="#000000">
+others </FONT><FONT COLOR="#800000">then</FONT><FONT COLOR="#000000">
+</FONT><FONT COLOR="#000080">-- if something happens</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.<FONT COLOR="#800000">close</FONT>;
+<FONT COLOR="#000080">-- close resources</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>raise;
+<FONT COLOR="#000080">-- raise the exception</FONT></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">
+mysqlsrv;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>/</FONT></FONT></FONT></P>
+<P><BR><BR>
+</P>
+<P>So you can:</P>
+<P><BR><BR>
+</P>
+<P>--slow</P>
+<P>SQL&gt; <B>select code, description from table(mysqlsrv.view_item)
+where code= '001'</B></P>
+<P><BR><BR>
+</P>
+<P>--fast may use an index on remote database</P>
+<P>SQL&gt; <B>select code, description from
+table(mysqlsrv.view_item_by_code('001'))</B></P>
+<P><BR><BR>
+</P>
+<P>--faster: create a materialized view</P>
+<P>SQL&gt; <B>create materialized view mv_item</B></P>
+<P><B>refresh complete</B></P>
+<P><B>as select * from table(mysqlsrv.view_item)</B></P>
+<H2 CLASS="western"></H2>
+<P>This will not work with Oracle XE because actually, it doesn't
+have the aurora internal JVM. (Java Option)</P>
+<P>Any other database edition should work.</P>
+<P><BR><BR>
+</P>
+<H2 CLASS="western">Why ?</H2>
+<P><BR><BR>
+</P>
+<P>This was born to make 10g talk with 7.3.4. But it can be used for
+any purpose.</P>
+<P><BR><BR>
+</P>
+<P>You can:</P>
+<P><BR><BR>
+</P>
+<P>1) use it like a normal view but it will be slooow to process
+where clauses</P>
+<P>2) add a parameter to the function to have the remote database use
+indexes (see above)</P>
+<P>3) create a materialized view on top of it, index materialized
+view columns, and use it locally</P>
+<P><BR><BR>
+</P>
+<H2 CLASS="western">Features</H2>
+<UL>
+	<LI><P>Enables to connect any jdbc reachable database to oracle</P>
+	<LI><P>Enables to query other databases from PL/SQL</P>
+	<LI><P>Enables to call remote stored procedures, or DML</P>
+	<LI><P>Enables to reach old versions of Oracle no more reachable by
+	dblinks</P>
+</UL>
+<P><BR><BR>
+</P>
+<P><BR><BR>
+</P>
+<P>User feedback will drive development, <I><U>submit your requests</U></I>:</P>
+<P><A HREF="http://sourceforge.net/tracker/?group_id=205664">http://sourceforge.net/tracker/?group_id=205664</A></P>
+<P><BR><BR>
+</P>
+<H2 CLASS="western">Download</H2>
+<P><BR><BR>
+</P>
+<P>Source/Doc or Binary package:</P>
+<P><A HREF="http://sourceforge.net/project/showfiles.php?group_id=205664">http://sourceforge.net/project/showfiles.php?group_id=205664</A></P>
+<P><BR><BR>
+</P>
+<P>or CVS (updated frequently):</P>
+<P><A HREF="http://sourceforge.net/cvs/?group_id=205664">http://sourceforge.net/cvs/?group_id=205664</A></P>
+<H2 CLASS="western">Use it</H2>
+<P><BR><BR>
+</P>
+<OL>
+	<LI><P>Download the <I>orajdbclink_o2a.zip</I> (oracle-to-any) file</P>
+	<LI><P>unzip in on a computer that has an oracle client installed
+	and can reach the target Oracle server or directly on the oracle
+	server</P>
+	<LI><P><I>cd orajdbclink_o2a</I></P>
+	<LI><P><I>sqlplus “sys/&lt;syspwd&gt;@&lt;connstr&gt; as sysdba”
+	@initoracletoany.sql</I> #(when prompted for connstr write “@&lt;your
+	connection string&gt;” or live it blank if you are on the server)</P>
+	<LI><P><I>loadjava -resolve -verbose -user
+	orajdbclink_o2a/orajdbclink_o2a@&lt;connstr&gt; jcifs-xx.jar
+	jtds-xx.jar <FONT FACE="Meera">#(jtds.jar depends on jcifs.jar)</FONT></I></P>
+	<LI><P><A NAME="DDE_LINK"></A><A NAME="DDE_LINK1"></A>Use you
+	favorite tool to insert records in the JDBC_DBLINK table
+	(DATA_SORCE_NAME: a name for the remote database, URL: the jdbc url,
+	DBUSER: the user for the remote database, DBPASSWORD: the password
+	for that user, DRIVER: the jdbc driver class):</P>
+	<P>DATA_SORCE_NAME: MYSQLSRV</P>
+	<P>URL: jdbc:jtds:sqlserver://myhost:1433/mydatabase</P>
+	<P>DBUSER: myuser</P>
+	<P>DBPASSWORD: mypwd</P>
+	<P>DRIVER: net.sourceforge.jtds.jdbc.Driver</P>
+	<LI><P>test it:</P>
+</OL>
+<P><BR><BR>
+</P>
+<P>set serveroutput on;</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000080"><FONT FACE="Monospace"><FONT SIZE=2>--
+test jcursor</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>declare</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor
+orajdbclink_o2a.jcursor:= orajdbclink_o2a.jcursor(</FONT><FONT COLOR="#0000ff">'select
+col1, col2, col5 from sqlservertable'</FONT>,<FONT COLOR="#0000ff">'MYSQLSRV'</FONT>,3);</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>begin</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2><B>dbms_java.set_output(10000);</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.init;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.</FONT><FONT COLOR="#800000">open</FONT>;</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>while
+v_cursor.dofetch = 1 loop</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(v_cursor.get_string(1));</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(v_cursor.get_string(2));</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(v_cursor.get_string(3));</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">
+loop;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.</FONT><FONT COLOR="#800000">close</FONT>;
+</FONT></FONT>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#800000"><FONT FACE="Monospace"><FONT SIZE=2>exception</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">when</FONT><FONT COLOR="#000000">
+others </FONT><FONT COLOR="#800000">then</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(</FONT><FONT COLOR="#0000ff">'err:
+'</FONT>||sqlerrm(<FONT COLOR="#800000">sqlcode</FONT>));</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.</FONT><FONT COLOR="#800000">close</FONT>;
+</FONT></FONT>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#800000">end</FONT><FONT COLOR="#000000">;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+test jcall</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#7f0055"><FONT FACE="Monospace"><FONT SIZE=2><B>declare</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call
+orajdbclink_o2a.jcall:= orajdbclink_o2a.jcall(</FONT><FONT COLOR="#0000ff">'insert
+into sqlservertable (col) values (?)'</FONT>,<FONT COLOR="#0000ff">'MYSQLSRV'</FONT>);</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#7f0055"><FONT FACE="Monospace"><FONT SIZE=2><B>begin</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_java.set_output(10000);</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.init;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.bind(1,</FONT><FONT COLOR="#0000ff">'hello'</FONT>);</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.executecall;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.close;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>exception</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>when
+others </FONT><FONT COLOR="#7f0055"><B>then</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(</FONT><FONT COLOR="#0000ff">'err:
+'</FONT>||sqlerrm(sqlcode));</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.rollback;
+</FONT><FONT COLOR="#408080">-- if something bad happens we rollback
+the jcall connection</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.close;
+</FONT></FONT></FONT>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#7f0055"><B>end</B></FONT><FONT COLOR="#000000">;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P><BR><BR>
+</P>
+<P>Any exception will be visible in the serveroutput.</P>
+<P>You can use as many drivers as you want. All you need to do is to
+load the jar files of drivers and dependecy into <I>orajdbclink_o2a
+</I>schema.</P>
+<P STYLE="font-style: normal">NOTE: (example) the jtds driver doesn't
+work until you load the jcifs jar on wich it depends.</P>
+<P><BR><BR>
+</P>
+<P STYLE="font-style: normal">Those who want to use orajdbclink only
+oracle-to-oracle, can use 
+</P>
+<P STYLE="font-style: normal"><I>orajdbclink_o2o.zip</I> to have some
+optimizations, and haven't to</P>
+<P STYLE="font-style: normal">load oracle jdbc drivers, because are
+already shipped in the oracle JVM.</P>
+<H2 CLASS="western"><FONT COLOR="#000000">Transactions</FONT></H2>
+<P><BR><BR>
+</P>
+<P><FONT COLOR="#000000">Actually there is no way to get a real
+distributed transaction, like a real oracle database link,</FONT></P>
+<P><FONT COLOR="#000000">so speaking by example:</FONT></P>
+<P><BR><BR>
+</P>
+<P STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+TEST 1: transaction isolation</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#7f0055"><FONT FACE="Monospace"><FONT SIZE=2><B>declare</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call
+orajdbclink_o2a.jcall;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor
+orajdbclink_o2a.jcursor;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#7f0055"><FONT FACE="Monospace"><FONT SIZE=2><B>begin</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_java.set_output(10000);</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+suppose &quot;sqlservertable&quot; to be empty</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call:=
+orajdbclink_o2a.jcall(</FONT><FONT COLOR="#0000ff">'insert into
+sqlservertable (col) values (?)'</FONT>,<FONT COLOR="#0000ff">'MYSQLSRV'</FONT>);</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.init;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.bind(1,</FONT><FONT COLOR="#0000ff">'hello'</FONT>);</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.executecall;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.close;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+actually v_call is not committed</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor:=
+orajdbclink_o2a.jcursor(</FONT><FONT COLOR="#0000ff">'select col from
+sqlservertable'</FONT>,<FONT COLOR="#0000ff">'MYSQLSRV'</FONT>,1);</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.init;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.open;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>while
+v_cursor.dofetch = 1 loop</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(v_cursor.get_string(1));
+</FONT><FONT COLOR="#408080">--this will print out a 'hello' because
+v_cursor uses the same jdbc connection</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#7f0055"><B>end</B></FONT><FONT COLOR="#000000">
+loop;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_cursor.close;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>raise_application_error(-20002,</FONT><FONT COLOR="#0000ff">'Something
+bad happens'</FONT>); <FONT COLOR="#408080">-- something bad happens,
+so v_call will be rolled back</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+if we remove this line the connectionmanager will commit the </FONT></FONT></FONT>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+transaction at the end of the pl/sql call
+(oracle.aurora.memoryManager.EndOfCallRegistry).</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>exception</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>when
+others </FONT><FONT COLOR="#7f0055"><B>then</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(</FONT><FONT COLOR="#0000ff">'err:
+'</FONT>||sqlerrm(sqlcode));</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.rollback;
+</FONT><FONT COLOR="#408080">-- if something bad happens we rollback
+the jcall connection</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.close;
+</FONT></FONT></FONT>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#7f0055"><B>end</B></FONT><FONT COLOR="#000000">;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+TEST 2: no distributed transaction</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#7f0055"><FONT FACE="Monospace"><FONT SIZE=2><B>declare</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call
+orajdbclink_o2a.jcall;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#7f0055"><FONT FACE="Monospace"><FONT SIZE=2><B>begin</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_java.set_output(10000);</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+suppose &quot;sqlservertable&quot; to be empty</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call:=
+orajdbclink_o2a.jcall(</FONT><FONT COLOR="#0000ff">'insert into
+sqlservertable (col) values (?)'</FONT>,<FONT COLOR="#0000ff">'MYSQLSRV'</FONT>);</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.init;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.bind(1,</FONT><FONT COLOR="#0000ff">'hello'</FONT>);
+<FONT COLOR="#408080">-- ALWAYS USE BIND VARIABLES !!!!</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.executecall;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.close;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+actually v_call is not committed</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#7f0055"><B>insert</B></FONT><FONT COLOR="#000000">
+</FONT><FONT COLOR="#7f0055"><B>into</B></FONT><FONT COLOR="#000000">
+mytable </FONT><FONT COLOR="#7f0055"><B>values</B></FONT><FONT COLOR="#000000">(1,2,3);</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+NOTE: If somthing goes wrong before that commit all will goes fine:
+the local and the remote transaction</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+will be rolled back</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#7f0055"><B>commit</B></FONT><FONT COLOR="#000000">;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><BR>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2>--
+WARNING: if we loose the connection with the remote host here
+(between &quot;commit&quot; and &quot;end&quot;) we will lost the
+jcall transaction !!</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#408080"><FONT FACE="Monospace"><FONT SIZE=2><B>--
+SO USE IT AT YOUR OWN RISK</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>exception</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>when
+others </FONT><FONT COLOR="#7f0055"><B>then</B></FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>rollback;</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.rollback;
+</FONT><FONT COLOR="#408080">-- if something bad happens we rollback
+the jcall connection</FONT></FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>v_call.close;
+</FONT></FONT></FONT>
+</P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT COLOR="#000000"><FONT FACE="Monospace"><FONT SIZE=2>dbms_output.put_line(</FONT><FONT COLOR="#0000ff">'err:
+'</FONT>||sqlerrm(sqlcode));</FONT></FONT></P>
+<P ALIGN=LEFT STYLE="margin-bottom: 0cm"><FONT FACE="Monospace"><FONT SIZE=2><FONT COLOR="#7f0055"><B>end</B></FONT><FONT COLOR="#000000">;</FONT></FONT></FONT></P>
+<P><BR><BR>
+</P>
+<P><BR><BR>
+</P>
+<H2 CLASS="western"><FONT COLOR="#000000">For those who wants to use
+oracle-to-oracle</FONT></H2>
+<OL START=7>
+	<LI VALUE=1><P>Download the <I>orajdbclink_o2o.zip</I>
+	(oracle-to-oracle) file</P>
+	<LI><P>unzip in on a computer that has an oracle client installed
+	and can reach the target Oracle server or directly on the oracle
+	server</P>
+	<LI><P><I>cd orajdbclink_o2o</I></P>
+	<LI><P><I>sqlplus “sys/&lt;syspwd&gt;@&lt;connstr&gt; as sysdba”
+	@initoracletooracle.sql</I> #(when prompted for connstr write
+	“@&lt;your connection string&gt;” or live it blank if you are on
+	the server)</P>
+	<LI><P><A NAME="DDE_LINK2"></A><A NAME="DDE_LINK11"></A><A NAME="DDE_LINK3"></A>
+	Use you favorite tool to insert records in the JDBC_DBLINK table
+	(DATA_SORCE_NAME: a name for the remote database, URL: an oracle
+	jdbc url, DBUSER: the user for the remote oracle database,
+	DBPASSWORD: the password for that user, EXPLICIT_CACHING: false
+	(used only for testing), IMPLICIT_CACHING: false (used only for
+	testing), ARRAYSIZE: how many rows to prefetch from server):</P>
+	<P>DATA_SORCE_NAME: MY734</P>
+	<P>URL: jdbc:oracle:thin:@m734server:1521:my734</P>
+	<P>DBUSER: scott</P>
+	<P>DBPASSWORD: tiger</P>
+	<P>EXPLICIT_CACHING: false</P>
+	<P>IMPLICIT_CACHING: false</P>
+	<P>ARRAYSIZE: 500</P>
+	<LI><P>test it as of <I>orajdbclink_o2a</I></P>
+</OL>
+<P><BR><BR>
+</P>
+<P><BR><BR>
+</P>
+<H2 CLASS="western"><FONT COLOR="#000000">Troubleshooting</FONT></H2>
+<P>If you get any other problem please submit a support request:</P>
+<P><A HREF="http://sourceforge.net/tracker/?group_id=205664">http://sourceforge.net/tracker/?group_id=205664</A></P>
+<P><BR><BR>
+</P>
+<H2 CLASS="western">About</H2>
+<P>orajdbclink is developed by Andrea A.A. Gariboldi</P>
+<P>mailto: andrea.gariboldi &lt;at&gt; gmail.com</P>
+<P><BR><BR>
+</P>
+</BODY>
+</HTML>
