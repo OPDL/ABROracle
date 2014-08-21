@@ -1,0 +1,38 @@
+#!/bin/bash
+#set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+function printHeader
+{
+printf "<hr>\n" >> "${FILE}"
+}
+###################################
+# run some daily type scripts and send as email
+# generate unique timestamp
+TS=$(date +%s)
+DS=$(timestampstring)
+FILE=/tmp/mail_file_${TS}.txt
+echo > ${FILE}
+printf "<div style='padding:4px;border:solid 2px gray;text-align:center'>Oracle Monitor %s %s</div>\n" $(date +"%D %T") >> "${FILE}"
+orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/disk_report.cmd >> "${FILE}"
+printHeader
+orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/os_memfree.cmd  >> "${FILE}"
+printf "<div style='padding:4px;border:solid 2px gray'>\n" >> "${FILE}"
+orcl_sqlcmd -m oem01 -f /home/oracle/user/sql/monitor_jobs.sql  >> "${FILE}"
+orcl_sqlcmd -m xa01db01 -f /home/oracle/user/sql/monitor_jobs.sql  >> "${FILE}"
+orcl_sqlcmd -m xa02db01 -f /home/oracle/user/sql/monitor_jobs.sql  >> "${FILE}"
+printf "</div>\n" >> "${FILE}"
+printHeader
+orcl_sqlcmd -m oem01 -f /home/oracle/user/sql/monitor_tablespaces.sql  >> "${FILE}"
+orcl_sqlcmd -m xa01db01 -f /home/oracle/user/sql/monitor_tablespaces.sql  >> "${FILE}"
+orcl_sqlcmd -m xa02db01 -f /home/oracle/user/sql/monitor_tablespaces.sql  >> "${FILE}"
+printHeader
+printf "<div style='padding:4px;font-style:italic;'>Adam Richards</div>\n" >> "${FILE}"
+
+mailfilehtml -a "${ORCL_MONITOR_EMAIL}" -s "Oracle Mail Monitor: ${DS}" -f ${FILE} -t
+# cleanup
+rm ${FILE}

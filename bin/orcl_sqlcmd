@@ -81,7 +81,7 @@ fi
 assertIdentityFile
 ####################################
 # generate unique timestamp
-TS=$(date +%s)
+TS=$(timestampstring)
 ####################################
 FINAL="/tmp/orcl_sql_report___TS__.txt"
 FINAL="${FINAL/__TS__/$TS}"
@@ -109,11 +109,12 @@ fi
 
 
 for w in ${SIDLIST}; do 
+cat /dev/null > "${TFILE}"
 if [[ $V = 1 ]]; then
-printf ">> %s %s:\n" "${HOST}" "${w}" 
+printf "Processing on %s %s:\n" "${HOST}" "${w}" 
+printf ">> %s %s:\n" "${HOST}" "${w}" >> "${TFILE}"
 fi
-printf ">> %s %s:\n" "${HOST}" "${w}" > "${TFILE}"
-cat "${SQLFILE}" | ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >>  ${TFILE} 
+cat "${SQLFILE}" | ssh -T -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >>  ${TFILE} 
 
 # check for errors
 grep -q -i -e "^ORA-" "${TFILE}"

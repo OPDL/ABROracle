@@ -1,0 +1,11 @@
+#!/bin/bash
+getCurrentTimeInMili() {
+  date +'%H 3600 * %M 60 * + %S + 1000 * %N 1000000 / + p' | dc
+}
+
+startTime=$(getCurrentTimeInMili)
+sleep 5
+endTime=$(getCurrentTimeInMili)
+
+etime=$(($endTime-$startTime))
+echo $etime

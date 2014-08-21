@@ -1,0 +1,106 @@
+#!/bin/bash
+#set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+##############################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $(basename $0) options
+Author: Adam Richards
+Email a file as html
+
+OPTIONS:
+-h        help
+-a value  To address list
+-s value  Subject
+-f value  file to send
+-t        preformatted text
+-v        verbose
+EOF
+}
+
+####################################
+# initialize argument variables
+ADDRLIST=
+INFILE=
+SUBJECT=
+V=
+T=
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “ha:s:f:vt” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         a)
+             ADDRLIST=$OPTARG
+             ;;
+         f)
+             INFILE=$OPTARG
+             ;;
+         s)
+             SUBJECT=$OPTARG
+             ;;
+         v)
+	     V=1
+             ;;
+         t)
+	     T=1
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $ADDRLIST ]] || [[ -z $SUBJECT ]] || [[ -z $INFILE ]]
+then
+     usage
+     exit 1
+fi
+
+if [[ ! -f "${INFILE}" ]]; then
+    printf "File not found: %s\n" "${INFILE}"
+    exit 1
+fi
+
+####################################
+assertIdentityFile
+##############################################
+HOST=oem01
+FROMUSER=orclmon@oem01.epc.com
+##############################################
+if [[ $T = 1 ]]; then
+TMPFILE=/tmp/mailfiletmp.${timestampstring}
+printf "<pre>\n" > "${TMPFILE}"
+cat "${INFILE}" >> "${TMPFILE}" 
+printf "</pre>\n" >> "${TMPFILE}" 
+INFILE="${TMPFILE}"
+fi
+
+cat <<EOF - "${INFILE}" | /usr/sbin/sendmail -t
+To: ${ADDRLIST}
+From: ${FROMUSER}
+Subject: ${SUBJECT} 
+Content-Type: text/html
+
+EOF
+##############################################
+if [[ $T = 1 ]]; then
+rm "${TMPFILE}"
+fi
+##############################################
+exit 0

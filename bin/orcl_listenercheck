@@ -20,6 +20,8 @@ Test listener connectivity
 OPTIONS:
 -h      help
 -m      listenerfile
+-w 	N watch elapsed time > N msec 
+-q	suppress header
 -v      verbose (show connection descriptors)
 EOF
 }
@@ -27,15 +29,16 @@ EOF
 ####################################
 # Listener File Format. Comments lines may be used.
 ####################################
-WATCH_SEC=1
+WATCH_MSEC=1000
 # initialize argument variables
 LISTFILE=
 V=
+Q=0
 W=0
 ####################################
 # process command line arguments
 # options with : after them expect an argument
-while getopts “hwvm:” OPTION
+while getopts “hw:vm:q” OPTION
 do
      case $OPTION in
 	 h)
@@ -48,7 +51,11 @@ do
 	 v)
 	     V=1
 	     ;;
+	 q)
+	     Q=1
+	     ;;
 	 w)
+	     WATCH_MSEC=$OPTARG
 	     W=1
 	     ;;
 	 ?)
@@ -114,7 +121,7 @@ CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(15)) as "HOST",
 CAST('__NAME__' as VARCHAR(15)) AS "NAME",
 CAST('__TITLE__' as VARCHAR(25)) AS "TITLE",
 CAST('__SCANHOST__' as VARCHAR(25)) AS "SCAN HOST",
-CAST('__ETIME__' as VARCHAR(9)) AS "ETIMESEC",
+CAST('__ETIME__' as VARCHAR(10)) AS "ETIMEMSEC",
 CAST(SYS_CONTEXT('USERENV','SERVICE_NAME') as VARCHAR2(20)) as "SERVICE_NAME",
 CAST(SYS_CONTEXT('USERENV','DB_NAME') as VARCHAR2(10)) as "DBNAME",
 CAST(instance_name as VARCHAR(10)) as "INSTANCE" 
@@ -124,13 +131,16 @@ EOT
 function printCSTR {
 printf "%s\n" "${1}" | perl -e 'while (<>) {$_=~s/\/.*@/@/g;print;}'
 }
+getCurrentTimeInMili() {
+  date +'%H 3600 * %M 60 * + %S + 1000 * %N 1000000 / + p' | dc
+}
 ####################################
 function processResult {
 shopt -s nocasematch
 if [[ ! -z ${3} ]]; then
-ET=$(printf "%+9s" "${3}")
+ET=$(printf "%+10s" "${3}")
 else
-ET=$(printf "%+9s" " ")
+ET=$(printf "%+10s" " ")
 fi
 ERROR_REGEX='error|warn|^ORA-|^TNS-'
 R=$(cat "${1}")
@@ -150,8 +160,14 @@ function convertsecs {
 }
 ####################################
 # print header
-printf "%-20s|%-15s|%-15s|%-25s|%-25s|%-9s|%-20s|%-10s|%-10s\n" "DT" "HOST" "NAME" \
-"CONNECT TYPE" "SCAN HOST" "ETIMESEC" "SERVICE NAME" "DBNAME" "INSTANCE"
+function printHeader {
+if [[ $Q = 0 ]]; then
+printf "%-20s|%-15s|%-15s|%-25s|%-25s|%-11s|%-19s|%-10s|%-10s\n" "DT" "HOST" "NAME" \
+"CONNECT TYPE" "SCAN HOST" "ETIMEMSEC" "SERVICE NAME" "DBNAME" "INSTANCE"
+HEADER_PRINTED=1
+fi
+}
+HEADER_PRINTED=0
 ####################################
 IFS=$'\r\n' RECORDS_ARRAY=($(cat "${LISTFILE}"))
 
@@ -184,15 +200,17 @@ if [[ ! -z $SCANHOST ]]; then
 	SQLT="${SQL/__TITLE__/Scan Listener}"
 	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
 	SQLT="${SQLT/__NAME__/$NAME}"
-STARTTIME=$(date +%s)
-	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR}  2> /dev/null > "${RESULTFILE}"
-ENDTIME=$(date +%s)
-ETIMESEC=$[ $ENDTIME - $STARTTIME ]
 
-#ETIMESTR=$(convertsecs ${ETIMESEC})
+startTime=$(getCurrentTimeInMili)
+	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR}  2> /dev/null > "${RESULTFILE}"
+endTime=$(getCurrentTimeInMili)
+ETIMEMSEC=$(($endTime-$startTime))
+ETIMEMSEC=$[ $endTime-$startTime ]
+
 	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
-if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
-	processResult "${RESULTFILE}" "Listener SCAN Host ${HOST} Service: ${SERVICENAME} " "${ETIMESEC}"
+if [ $ETIMEMSEC -gt $WATCH_MSEC ] || [ $W -eq 0 ]; then
+	if [ $HEADER_PRINTED = 0 ] ;then printHeader;fi
+	processResult "${RESULTFILE}" "Listener SCAN Host ${HOST} Service: ${SERVICENAME} " "${ETIMEMSEC}"
 fi
 
 # TESTSCAN by INSTANCE
@@ -207,14 +225,15 @@ for node in "${HOSTLIST_ARRAY[@]}" ; do
 	SQLT="${SQL/__TITLE__/Scan Listener Instance}"
 	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
 	SQLT="${SQLT/__NAME__/$NAME}"
-STARTTIME=$(date +%s)
+startTime=$(getCurrentTimeInMili)
 	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR} > "${RESULTFILE}"
-ENDTIME=$(date +%s)
-ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+endTime=$(getCurrentTimeInMili)
+ETIMEMSEC=$(($endTime-$startTime))
 
 	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
-if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
-	processResult "${RESULTFILE}" "Listener SCAN Host ${HOST} Service: ${SERVICENAME} Instance: ${INSTANCE}" "${ETIMESEC}"
+if [ $ETIMEMSEC -gt $WATCH_MSEC ] || [ $W -eq 0 ]; then
+	if [ $HEADER_PRINTED = 0 ] ;then printHeader;fi
+	processResult "${RESULTFILE}" "Listener SCAN Host ${HOST} Service: ${SERVICENAME} Instance: ${INSTANCE}" "${ETIMEMSEC}"
 fi
 done
 
@@ -252,13 +271,16 @@ if [[ ! -z $SERVICENAME ]]; then
 	SQLT="${SQL/__TITLE__/Local Listener Service}"
 	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
 	SQLT="${SQLT/__NAME__/$NAME}"
-STARTTIME=$(date +%s)
+
+startTime=$(getCurrentTimeInMili)
 	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR}  2> /dev/null > "${RESULTFILE}"
-ENDTIME=$(date +%s)
-ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+endTime=$(getCurrentTimeInMili)
+ETIMEMSEC=$(($endTime-$startTime))
+
 	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
-if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
-	processResult "${RESULTFILE}" "Local Listener Service Name. HOST: ${HOST} Service Name: ${SERVICENAME}" "${ETIMESEC}"
+if [ $ETIMEMSEC -gt $WATCH_MSEC ] || [ $W -eq 0 ]; then
+	if [ $HEADER_PRINTED = 0 ] ;then printHeader;fi
+	processResult "${RESULTFILE}" "Local Listener Service Name. HOST: ${HOST} Service Name: ${SERVICENAME}" "${ETIMEMSEC}"
 fi
 else
 # TEST LOCAL LISTENER USING SID
@@ -272,13 +294,16 @@ else
 	SQLT="${SQL/__TITLE__/Local Listener SID}"
 	SQLT="${SQLT/__SCANHOST__/$SCANHOST}"
 	SQLT="${SQLT/__NAME__/$NAME}"
-STARTTIME=$(date +%s)
+
+startTime=$(getCurrentTimeInMili)
 	printf "%s\n" "${SQLT}" |sqlplus -S -L  ${CSTR}  2> /dev/null > "${RESULTFILE}"
-ENDTIME=$(date +%s)
-ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+endTime=$(getCurrentTimeInMili)
+ETIMEMSEC=$(($endTime-$startTime))
+
 	if [[ ! -z $V ]];then  printCSTR "${CSTR}"; fi
-if [ $ETIMESEC -gt $WATCH_SEC ] || [ $W -eq 0 ]; then
-	processResult "${RESULTFILE}" "Local Listener SID.  HOST: ${HOST} SID: ${SID} " "${ETIMESEC}"
+if [ $ETIMEMSEC -gt $WATCH_MSEC ] || [ $W -eq 0 ]; then
+	if [ $HEADER_PRINTED = 0 ] ;then printHeader;fi
+	processResult "${RESULTFILE}" "Local Listener SID.  HOST: ${HOST} SID: ${SID} " "${ETIMEMSEC}"
 fi
 fi
 done
