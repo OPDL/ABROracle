@@ -1,5 +1,5 @@
 #!/bin/bash
-#set -x
+# set -x
 ####################################
 # get script directory
 SWD=$(dirname ${0})
@@ -11,39 +11,42 @@ source "${SWD}/../lib/orcl_lib"
 ## process command line arguments
 if [ -z "$1" ]
 then
-echo "Syntax: $0 host|hostfile"
+echo "Syntax: $0 host|ALL"
 exit 1
 fi
 ##############################################
 assertIdentityFile
 ##############################################
-ISFILE=$(fileExists "$1")
-SHOST=$(echo "$1" | tr -s '[:lower:]' '[:upper:]')
+ARG1=$(echo "${1}" | tr '[:lower:]' '[:upper:]')
 DEFAULT_COLOR="default"
 PROD_COLOR="prod"
 DEV_COLOR="dev"
 SUPPORT_COLOR="support"
 HOSTS=$(cat "${ORCL_HOSTFILE}" |   tr '\r\n' ' ')
+
 for h in ${HOSTS}; do
-COLOR_SCHEME=$DEFAULT_COLOR
+
 HOST=$(echo $h | cut -s -d'|' -f1 | tr  '[:lower:]' '[:upper:]')
-TYPE=$(echo $h | cut -s -d'|' -f2 | tr  '[:lower:]' '[:upper:]')
-if [[ $TYPE = "PROD" ]]; then
-	COLOR_SCHEME="$PROD_COLOR"
-fi
-if [[ $TYPE = "DEV" ]]; then
-	COLOR_SCHEME="$DEV_COLOR"
-fi
-if [[ $TYPE = "SUPPORT" ]]; then
-	COLOR_SCHEME="$SUPPORT_COLOR"
-fi
+TYPE=$(echo $h | cut -s -d'|' -f2 )
+
+COLOR_SCHEME=$DEFAULT_COLOR
+if [ ! -z $TYPE ]; then
+	COLOR_SCHEME="$TYPE"
+fi 
 # if using a file list
-if [[ $ISFILE = 0 ]]; then
+if [[ "$ARG1" == "ALL" ]]; then
 	gnome-terminal  -e "ssh -X -i "${ORCL_SSHIDFILE}" "${ORCL_SSHUSER}"@$HOST" --window-with-profile=$COLOR_SCHEME &
+	FOUND=1
 else
-	if [[ $SHOST = $HOST ]]; then 
+	if [[ "$ARG1" == "$HOST" ]]; then 
 		gnome-terminal  -e "ssh -X -i "${ORCL_SSHIDFILE}" "${ORCL_SSHUSER}"@$HOST" --window-with-profile=$COLOR_SCHEME &
+		FOUND=1
 	fi
 fi
 done
+
+if [ -z $FOUND ]; then
+	COLOR_SCHEME=$DEFAULT_COLOR
+	gnome-terminal  -e "ssh -X "${ORCL_SSHUSER}"@$ARG1" --window-with-profile=$COLOR_SCHEME &
+fi
 exit 0
