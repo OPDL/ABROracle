@@ -1,0 +1,8 @@
+set echo on
+show all;
+run {
+backup as compressed backupset device type disk tag oemdb_daily database;
+backup as compressed backupset device type disk tag oemdb_daily_backup archivelog all not backed up 2 times delete all input;
+delete obsolete;
+}
+exit;

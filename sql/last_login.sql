@@ -22,3 +22,4 @@ and returncode > 0
 ) a
 where timestamp = a."MAX_TS"
 order by username asc;
+

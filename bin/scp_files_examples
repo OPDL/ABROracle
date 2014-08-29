@@ -1,0 +1,4 @@
+cat $0	
+exit 0
+scp example
+scp -i ~/safe/identity/id_rsa_epc_oracle oracle@xa02db01:/orabacklin/work/DATAPUMP/bin/*  ./

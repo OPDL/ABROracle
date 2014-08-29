@@ -1,0 +1,11 @@
+#!/bin/bash
+if [ -z $2 ]; then
+I=1
+else
+I=$2
+fi
+for i in $(seq 1 $I); do
+#traceroute -w 10 -q 1 -N 32 -p 1521 -n "${1}"
+traceroute -w 1 -q 1   -n "${1}"
+sleep 1
+done

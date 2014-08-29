@@ -1,0 +1,23 @@
+# compressed backup using parallelism 4 and 4 disk channels
+run {
+configure channel 1 device type disk format 'backup_db_c1%d_S_%s_P_%p_T_%t' MAXPIECESIZE 1024 M;
+configure channel 2 device type disk format 'backup_db_c2%d_S_%s_P_%p_T_%t' MAXPIECESIZE 1024 M;
+configure channel 3 device type disk format 'backup_db_c2%d_S_%s_P_%p_T_%t' MAXPIECESIZE 1024 M;
+configure channel 4 device type disk format 'backup_db_c2%d_S_%s_P_%p_T_%t' MAXPIECESIZE 1024 M;
+
+
+configure channel 1 DEVICE TYPE DISK CONNECT '/as sysdba';
+configure channel 2 DEVICE TYPE DISK CONNECT '/as sysdba';
+configure channel 3 DEVICE TYPE DISK CONNECT '/as sysdba';
+configure channel 4 DEVICE TYPE DISK CONNECT '/as sysdba';
+
+CONFIGURE DEVICE TYPE DISK BACKUP TYPE TO COMPRESSED BACKUPSET PARALLELISM 4;
+backup device type disk database tag='FULL-COLD {SID} {D} {T} {DT}';
+}
+# clear disk channels 
+run {
+configure channel 1 device type disk clear;
+configure channel 2 device type disk clear;
+configure channel 3 device type disk clear;
+configure channel 4 device type disk clear;
+}

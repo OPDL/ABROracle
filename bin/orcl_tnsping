@@ -1,0 +1,226 @@
+#!/bin/bash
+# Author: Adam Richards
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+CNT=1
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+####################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $0 options
+Author: Adam Richards
+Test listener connectivity
+
+OPTIONS:
+-h      help
+-m      listenerfile 
+-w 	N watch elapsed time > N msec 
+-v      verbose (show connection descriptors)
+EOF
+}
+
+####################################
+# Listener File Format. Comments lines may be used.
+####################################
+WATCH_MSEC=500
+# initialize argument variables
+LISTFILE=
+V=0
+W=0
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hw:vm:q” OPTION
+do
+     case $OPTION in
+	 h)
+	     usage
+	     exit 1
+	     ;;
+	 m)
+	     LISTFILE=$OPTARG
+	     ;;
+	 v)
+	     V=1
+	     ;;
+	 w)
+	     W=$OPTARG
+	     ;;
+	 ?)
+	     usage
+	     exit
+	     ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $LISTFILE ]] 
+then
+     usage
+     exit 1
+fi
+
+if [[ ! -f "${LISTFILE}" ]]; then
+    printf "File not found: %s\n" "${LISTFILE}"
+    exit 1
+fi
+####################################
+# generate unique timestamp
+TS=$(date +%s)
+####################################
+# connection formats
+# via RAC SCAN
+#sqlplus 'dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)))'
+# via RAC SCAN
+#sqlplus 'dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)(INSTANCE_NAME=epcdt1))'
+# via host local listener
+#sqlplus 'dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02db01.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SID=epcdt1)))'
+
+#EZCONNECT username@[//]host[:port][/[service_name][:server]][/instance_name]]
+#Enter password: password
+#The connect identifier converts to the following connect descriptor:
+# results file
+PID=$$
+RESULTFILE="/tmp/tnsping_${PID}_${TS}.txt"
+
+# RAC scan listener style
+CSTR_RAC='(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__SCANHOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=__SERVICENAME__)))'
+# RAC scan listener style with instance specified
+CSTR_RAC_INSTANCE='(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__SCANHOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=__SERVICENAME__)(INSTANCE_NAME=__INSTANCENAME__)))'
+# local listener style
+CSTR_LOCAL_SID='(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__HOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SID=__SID__)))'
+CSTR_LOCAL_SERVICE='(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=__HOST__)(PORT=__PORT__)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=__SERVICENAME__)))'
+####################################
+function printCSTR {
+printf "%s\n" "${1}" | perl -e 'while (<>) {$_=~s/\/.*@/@/g;print;}'
+}
+####################################
+function processResult {
+shopt -s nocasematch
+OIFS=$IFS
+IFS=' '
+ERROR_REGEX='error|warn|^ORA-|^TNS-'
+R=$(cat "${1}")
+if [[ ${R} =~ $ERROR_REGEX ]]; then
+	printf "%s: %s\n" "ERROR Connecting" "${2}"
+	cat "${1}" | perl -e 'while (<>) {$_=~s/[ \t]+$//g;print "\t$_" if (!/^\s*$/);;}'
+else
+	VL=$(cat "${1}" | perl -ne 'print "$1 " if m/^OK\s+\((\d+)\s+/')
+	for VAL in $VL; do
+		VAL=$(printf "%s" $VAL | tr -d ' ')
+		
+		if [ $W -eq 0 ] || [ $VAL -gt $W ]; then
+			if [[ $V -eq 1 ]]; then
+				printCSTR "${4}"
+			fi
+			printf "%10d | msec | %s\n" "${VAL}" "${2}"
+			orcl_traceroute "${3}"
+		fi
+	done
+fi
+IFS=$OIFS
+}
+####################################
+IFS=$'\r\n' RECORDS_ARRAY=($(cat "${LISTFILE}"))
+
+for RECORD in "${RECORDS_ARRAY[@]}" ; do 
+#ignore comment lines
+COMMENT_REGEX='^\s*#'
+if [[ ${RECORD} =~ $COMMENT_REGEX ]]; then
+	continue
+fi
+IFS='|' read -ra RECORD_ARRAY <<< "${RECORD}"
+NAME=$(printf "%s" "${RECORD}" | cut -d'|' -f1 )
+HOSTLIST=$(printf "%s" "${RECORD}" | cut -d'|' -f2 )
+PORT=$(printf "%s" "${RECORD}" | cut -d'|' -f3 )
+SCANHOST=$(printf "%s" "${RECORD}" | cut -d'|' -f4 )
+SERVICENAME=$(printf "%s" "${RECORD}" | cut -d'|' -f5 )
+
+IFS="," read -ra HOSTLIST_ARRAY <<< "${HOSTLIST}"
+NUMHOSTS=${#HOSTLIST_ARRAY[@]}
+
+if [[ ! -z $SCANHOST ]]; then
+
+# TEST SCAN
+	CSTR="${CSTR_RAC/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__SCANHOST__/$SCANHOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SERVICENAME__/$SERVICENAME}"
+
+	tnsping ${CSTR} ${CNT}  2> /dev/null > "${RESULTFILE}"
+
+	processResult "${RESULTFILE}" "Listener SCAN Host ${SCANHOST} Service: ${SERVICENAME} " "${SCANHOST}" "${CSTR}"
+
+# TESTSCAN by INSTANCE
+for node in "${HOSTLIST_ARRAY[@]}" ; do
+	INSTANCE=$(printf "%s" "${node}" | cut -d':' -f2)
+	CSTR="${CSTR_RAC_INSTANCE/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__SCANHOST__/$SCANHOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SERVICENAME__/$SERVICENAME}"
+	CSTR="${CSTR/__INSTANCENAME__/$INSTANCE}"
+
+	tnsping ${CSTR} ${CNT} 2> /dev/null > "${RESULTFILE}"
+
+	processResult "${RESULTFILE}" "Listener SCAN Host ${SCANHOST} Service: ${SERVICENAME} Instance: ${INSTANCE}" "${SCANHOST}" "${CSTR}"
+done
+
+fi
+
+done
+
+# Local Listeners
+for RECORD in "${RECORDS_ARRAY[@]}" ; do 
+#ignore comment lines
+COMMENT_REGEX='^\s*#'
+if [[ ${RECORD} =~ $COMMENT_REGEX ]]; then
+continue
+fi
+IFS='|' read -ra RECORD_ARRAY <<< "${RECORD}"
+NAME=$(printf "%s" "${RECORD}" | cut -d'|' -f1 )
+HOSTLIST=$(printf "%s" "${RECORD}" | cut -d'|' -f2 )
+PORT=$(printf "%s" "${RECORD}" | cut -d'|' -f3 )
+SCANHOST=$(printf "%s" "${RECORD}" | cut -d'|' -f4 )
+SERVICENAME=$(printf "%s" "${RECORD}" | cut -d'|' -f5 )
+
+IFS="," read -ra HOSTLIST_ARRAY <<< "${HOSTLIST}"
+NUMHOSTS=${#HOSTLIST_ARRAY[@]}
+for node in "${HOSTLIST_ARRAY[@]}" ; do
+if [[ ! -z $SERVICENAME ]]; then
+# TEST LOCAL LISTENER USING SERVICE NAME
+	HOST=$(printf "%s" "${node}" | cut -d':' -f1)
+	CSTR="${CSTR_LOCAL_SERVICE/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__HOST__/$HOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SERVICENAME__/$SERVICENAME}"
+
+	tnsping ${CSTR} ${CNT}  2> /dev/null > "${RESULTFILE}"
+
+	processResult "${RESULTFILE}" "Local Listener Service Name. HOST: ${HOST} Service Name: ${SERVICENAME}" "${HOST}" "${CSTR}"
+else
+# TEST LOCAL LISTENER USING SID
+	HOST=$(printf "%s" "${node}" | cut -d':' -f1)
+	SID=$(printf "%s" "${node}" | cut -d':' -f2)
+	CSTR="${CSTR_LOCAL_SID/__U__/$USERNAME}"
+	CSTR="${CSTR/__P__/$PASSWORD}"
+	CSTR="${CSTR/__HOST__/$HOST}"
+	CSTR="${CSTR/__PORT__/$PORT}"
+	CSTR="${CSTR/__SID__/$SID}"
+
+	tnsping ${CSTR} ${CNT}  2> /dev/null > "${RESULTFILE}"
+
+	processResult "${RESULTFILE}" "Local Listener SID.  HOST: ${HOST} SID: ${SID} " "${HOST}" "${CSTR}"
+fi
+done
+done
+exit 0

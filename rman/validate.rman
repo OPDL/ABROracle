@@ -1,0 +1,32 @@
+set echo on
+run {
+
+show all;
+
+#http://docs.oracle.com/cd/B28359_01/backup.111/b28270/rcmvalid.htm
+
+
+# When you run BACKUP VALIDATE, RMAN reads the files to be backed up
+# in their entirety, as it would during a real backup. 
+# RMAN does not, however, actually produce any backup sets or image 
+# copies.  The CHECK LOGICAL clause check for logical corruptions.
+
+BACKUP VALIDATE 
+ CHECK LOGICAL 
+  DATABASE 
+  ARCHIVELOG ALL;
+
+# You can run RESTORE ... VALIDATE to test whether RMAN can restore
+# a specific file or set of files from a backup. RMAN chooses which
+# backups to use.
+
+# RESTORE DATABASE VALIDATE;
+# RESTORE ARCHIVELOG ALL VALIDATE;
+# RESTORE DATABASE VALIDATE HEADER;
+
+# Checks for both logical and physical corruptions
+RESTORE DATABASE VALIDATE CHECK LOGICAL;
+
+}
+exit;
+

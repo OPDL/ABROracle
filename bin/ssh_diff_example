@@ -1,3 +1,7 @@
+#!/bin/bash
+# Author: Adam Richards
+cat $0
+exit 0
 FILE=/u01/app/11.2.0.3/grid/network/admin/sqlnet.ora
 HOST1=xa02db01
 HOST2=xa02db02

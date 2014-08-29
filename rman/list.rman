@@ -1,0 +1,5 @@
+show all;
+list backup;
+list expired backup;
+exit
+

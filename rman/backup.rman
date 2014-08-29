@@ -1,0 +1,7 @@
+set echo on
+show all;
+run {
+backup as compressed backupset device type disk tag {sid}_daily database;
+backup as compressed backupset device type disk tag {sid}_daily_backup archivelog all not backed up 2 times delete all input;
+}
+exit;
