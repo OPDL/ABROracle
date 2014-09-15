@@ -1,11 +1,14 @@
 -- Adam Richards
 -- show rman history for last 7 days
+DEFINE DAY_RANGE=7
 set feedback off
+set verify off
 set pagesize 9999
 set linesize 9999
 set colsep '|'
-DEFINE DAY_RANGE=7
 ALTER SESSION SET NLS_DATE_FORMAT ='MM-DD-YYYY HH24:MI:SS';
+
+select * from (
 select HOST,DBNAME,OPERATION,STATUS,COUNT(*) as CNT from
 (
 SELECT 
@@ -38,6 +41,9 @@ WHERE start_time > sysdate - &DAY_RANGE
 AND row_type    <> 'SESSION'
 ) a
 GROUP BY ROLLUP(HOST,DBNAME,OPERATION,STATUS)
+)
+where length(trim(status)) > 0
+order by operation asc
 ;
 
 
@@ -67,7 +73,9 @@ SELECT
   OUTPUT_DEVICE_TYPE,
   optimized
 FROM v$rman_status
-WHERE start_time > sysdate - &DAY_RANGE
-AND row_type    <> 'SESSION'
+WHERE 
+start_time > sysdate - &DAY_RANGE
+AND upper(row_type)    <> 'SESSION'
+AND upper(status) not in ('COMPLETED')
 ORDER BY start_time DESC;
 

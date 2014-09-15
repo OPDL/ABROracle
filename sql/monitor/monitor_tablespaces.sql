@@ -1,3 +1,4 @@
+DEFINE PERCENT_LIMIT=90
 SET NEWPAGE 0
 SET SPACE 2
 SET PAGESIZE 9999
@@ -52,6 +53,6 @@ group by tablespace_name,autoextensible,status
 where a.tablespace_name(+)=b.tablespace_name
 )
 where
-NVL("MAX_USED%",0) > 60
+NVL("MAX_USED%",0) >  &PERCENT_LIMIT
 order by sid, type,tablespace_name;
 
