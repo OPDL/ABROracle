@@ -1,0 +1,12 @@
+set linesize 9999
+set pagesize 9999
+SELECT S.SID, S.SERIAL#, S.SQL_ID, S.STATUS 
+--, Q.SQL_TEXT
+FROM GV$SESSION S, GV$SQL Q
+WHERE S.USERNAME IS NOT NULL
+--AND S.STATUS = 'ACTIVE'
+--AND S.SQL_ID IS NOT NULL
+AND Q.SQL_ID = S.SQL_ID
+;
+
+-- select 'ALTER SYSTEM KILL SESSION \'{sid},{serial#}\';' from dual

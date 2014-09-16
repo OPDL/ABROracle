@@ -1,2 +1,0 @@
-cat $0	
-# scp -i ~/safe/epc/identity/id_rsa_epc_oracle oracle@xa02db01:/orabacklin/work/DATAPUMP/bin/*  ./
