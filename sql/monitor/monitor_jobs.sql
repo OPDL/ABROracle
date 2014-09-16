@@ -1,5 +1,7 @@
 -- Adam Richards
 -- look at jobs over last 7 days
+-- DECODE( expression , search , result [, search , result]... [, default] )
+-- INSTR(source, string)
 define DAYS=7
 set pagesize 9999
 set linesize 9999
@@ -33,7 +35,12 @@ select
 CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(15)) as "HOST"
 ,CAST(SYS_CONTEXT('USERENV','DB_NAME') as VARCHAR2(10)) as "DBNAME"
 ,log_date
-,job_name
+,case 
+when instr(job_name,'ORA$AT_OS_OPT_SY') > 0 then 'ORA$AT_OS_OPT_SY'
+when instr(job_name,'ORA$AT_SA_SPC_SY') > 0 then 'ORA$AT_SA_SPC_SY'
+when instr(job_name,'ORA$AT_SQ_SQL_SW') > 0 then 'ORA$AT_SQ_SQL_SW'
+else job_name
+end as job_name
 ,instance_id
 ,run_duration
 ,status 
