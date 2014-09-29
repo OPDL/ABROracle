@@ -7,12 +7,14 @@ set linesize 9999
 set colsep '|'
 DEFINE DAY_RANGE=7
 ALTER SESSION SET NLS_DATE_FORMAT ='MM-DD-YYYY HH24:MI:SS';
+
+select * from (
 select HOST,DBNAME,OPERATION,STATUS,COUNT(*) as CNT from
 (
 SELECT 
   CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(20)) as "HOST",
   CAST(SYS_CONTEXT('USERENV','DB_NAME') as VARCHAR2(10)) as "DBNAME",
-  operation,
+  operation || ' ' || object_type as "OPERATION",
   status,
 --  row_level,
 --  row_type,
@@ -39,7 +41,11 @@ WHERE start_time > sysdate - &DAY_RANGE
 AND row_type    <> 'SESSION'
 ) a
 GROUP BY ROLLUP(HOST,DBNAME,OPERATION,STATUS)
+)
+where length(trim(status)) > 0
+order by cnt desc, operation asc
 ;
+
 
 
 SELECT 

@@ -14,7 +14,7 @@ select HOST,DBNAME,OPERATION,STATUS,COUNT(*) as CNT from
 SELECT 
   CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(20)) as "HOST",
   CAST(SYS_CONTEXT('USERENV','DB_NAME') as VARCHAR2(10)) as "DBNAME",
-  operation,
+  operation || ' ' || object_type as "OPERATION",
   status,
 --  row_level,
 --  row_type,
@@ -43,7 +43,7 @@ AND row_type    <> 'SESSION'
 GROUP BY ROLLUP(HOST,DBNAME,OPERATION,STATUS)
 )
 where length(trim(status)) > 0
-order by operation asc
+order by cnt desc, operation asc
 ;
 
 

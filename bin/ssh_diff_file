@@ -1,8 +1,8 @@
 #!/bin/bash
 # Author: Adam Richards
 FILE=/u01/app/11.2.0.3/grid/network/admin/sqlnet.ora
-HOST1=xa02db01
-HOST2=xa02db02
+HOST1=xa01db01
+HOST2=xa01db02
 ID=$HOME/safe/epc/identity/id_rsa_epc_oracle
 #diff <(ssh -i "${ID}" oracle@"${HOST1}" "cat \"${FILE}\"") <(ssh -i "${ID}" oracle@"${HOST2}" "cat \"${FILE}\"") 
 vimdiff <(ssh -i "${ID}" oracle@"${HOST1}" "cat \"${FILE}\"") <(ssh -i "${ID}" oracle@"${HOST2}" "cat \"${FILE}\"") 

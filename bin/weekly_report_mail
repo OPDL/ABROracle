@@ -12,12 +12,11 @@ CL=""
 ###################################
 # SQL files to run list. 
 # format  Title:sqlfile | Title:sqlfile ...
-SL="Jobs Report:monitor_jobs.sql|\
-RMAN Report:monitor_rman.sql|\
-Tablespaces Near Full Report:monitor_tablespaces.sql"
+SL="Jobs Report:report_jobs.sql|\
+RMAN Report:report_rman.sql"
 
 ###################################
-SQLDIR=/home/oracle/user/sql/monitor
+SQLDIR=/home/oracle/user/sql/reports
 DTS="$(date +'%D %T')"
 ###################################
 # load support files
@@ -70,7 +69,7 @@ printf "<div style='padding:4px;font-style:italic;'>Adam Richards</div>\n"
 
 function printHeader
 {
-printf "<div style='padding:4px;border:ridge 4px blue;font-size:20pt;font-weight:bold;text-align:center'>Oracle Monitor %s %s</div>\n" "${DTS}"
+printf "<div style='padding:4px;border:ridge 4px blue;font-size:20pt;font-weight:bold;text-align:center'>Weekly Oracle Report %s %s</div>\n" "${DTS}"
 }
 
 function runSqlBlock
@@ -89,17 +88,9 @@ printBorderWrap end >> "${3}"
 TS=$(date +%s)
 FILE=/tmp/mail_file_${TS}.txt
 ##################################
-printf "Monitor Script Run: %s \n" "${DTS}"
+printf "Weekly Report Script Run: %s \n" "${DTS}"
 echo > "${FILE}"
 printHeader >> "${FILE}"
-
-printBorderWrap start "Disk Usage Report" >> "${FILE}"
-orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/disk_report.cmd >> "${FILE}"
-printBorderWrap end >> "${FILE}"
-
-printBorderWrap start "Memory Usage Report" >> "${FILE}"
-orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/os_memfree.cmd  >> "${FILE}"
-printBorderWrap end >> "${FILE}"
 
 ##################################
 # run all sql scripts in SL List
@@ -121,7 +112,8 @@ printFooter >> "${FILE}"
 ##################################
 # replace tabs
 perl -p -i -e 'while(s/\t+/" " x (length($&) * 8 - length($`) % 8)/e) {}' "${FILE}"
-mailfilehtml -a "${ORCL_MONITOR_EMAIL}" -s "Oracle Monitor: ${DTS}" -f ${FILE} -t
+mailfilehtml -a "${ORCL_MONITOR_EMAIL}" -s "Weekly Oracle Report: ${DTS}" -f ${FILE} -t
+# mailfilehtml -a "adamrichards@elpasoco.com" -s "Weekly Oracle Report: ${DTS}" -f ${FILE} -t
 # cleanup
 rm ${FILE}
 exit 0
