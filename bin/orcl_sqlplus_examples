@@ -3,7 +3,10 @@ cat $0
 exit 0
 sqlplus remote examples
 sqlplus "dsvrichards@(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=xa02-scan.epc.com)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)))"
+with timeout
+sqlplus "dsvrichards@(DESCRIPTION=(CONNECT_TIMEOUT=2)(RETRY_COUNT=1)(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=falkor)(PORT=1521)))(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=epcdt.epc.com)))"
 
+using EZConnect
 sqlplus "dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com\" "
 sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com\"
 sqlplus dsvrichards@\"xa02-scan.epc.com/epcdt.epc.com/epcdt1\"
