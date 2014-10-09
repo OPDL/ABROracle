@@ -11,10 +11,12 @@ not in ( select username from dba_audit_trail where action_name
 in ('LOGOFF','LOGON') and username is not null );
 
 -- last successful login
-select USERNAME
+select aa.*,(case when  bb.username is null THEN '[DELETED]' ELSE '[ACTIVE]' END) as "STATUS" from (
+select 
+USERNAME
 ,TO_CHAR (TIMESTAMP, 'YYYY-MON-DD HH24:MI:SS') as "LAST_SUCCESSFUL_LOGIN" 
 --,trunc((sysdate - TIMESTAMP)*24) "HOURS AGO"
-,trunc((sysdate - TIMESTAMP)) "DAYS AGO"
+,trunc((sysdate - TIMESTAMP)) "DAYS_AGO"
 from (
 select username,returncode, TIMESTAMP, row_number() over (partition by username order by username, timestamp desc) as "RN" from
 (
@@ -26,7 +28,9 @@ and returncode = 0
 where timestamp = a.max_ts
 ) b
 where b.rn = 1
-order by timestamp desc, username asc;
+) aa left outer join DBA_USERS bb
+on aa.username = bb.username
+order by aa."DAYS_AGO" asc, aa.username asc;
 
 -- last failed login
 select username,TO_CHAR (TIMESTAMP, 'YYYY-MON-DD HH24:MI:SS') as "LAST_FAILED_LOGIN" , returncode from
