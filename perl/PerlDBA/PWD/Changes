@@ -1,6 +1,0 @@
-Revision history for Perl extension PDBA::PWD.
-
-0.01  Tue Jul 10 20:54:44 2001
-	- original version; created by h2xs 1.20 with options
-		-X -f PDBA::PWD
-
