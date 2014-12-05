@@ -1,0 +1,147 @@
+#!/bin/bash
+# set -x
+# INCOMPLETE!!!
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+source "${SWD}/../lib/orcl_lib"
+####################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $(basename $0) options
+Author: Adam Richards
+Reset passwords and unlock.
+Based on a password file.
+
+OPTIONS:
+-h        help
+-m value  host
+-s value  sid
+-u value  username
+-a        reset all 
+-v        verbose
+EOF
+}
+####################################
+# initialize argument variables
+HOST=
+SID=
+UNAME=
+A=0
+V=0
+PWFILE=
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hm:s:u:av” OPTION
+do
+     case $OPTION in
+	 h)
+	     usage
+	     exit 1
+	     ;;
+	 m)
+	     HOST=$OPTARG
+	     ;;
+	 u)
+	     UNAME=$OPTARG
+	     ;;
+	 s)
+	     SID=$OPTARG
+	     ;;
+	 a)
+	     A=1
+	     ;;
+	 v)
+	     V=1
+	     ;;
+	 ?)
+	     usage
+	     exit
+	     ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $HOSTFILE ]] 
+then
+     usage
+     exit 1
+fi
+
+if [[ -z $SQLFILE ]] 
+then
+     usage
+     exit 1
+fi
+
+if [[ ! -f "${SQLFILE}" ]]; then
+    printf "File not found: %s\n" "${SQLFILE}"
+    exit 1
+fi
+
+####################################
+assertIdentityFile
+####################################
+# generate unique timestamp
+TS=$(timestampstring)
+####################################
+FINAL="/tmp/orcl_sql_report___TS__.txt"
+FINAL="${FINAL/__TS__/$TS}"
+TFILE="/tmp/tmp___TS__.txt"
+TFILE="${TFILE/__TS__/$TS}"
+TFILE2="/tmp/tmp2___TS__.txt"
+TFILE2="${TFILE2/__TS__/$TS}"
+####################################
+# if hostfile variable is a file we
+# will read it for host info
+if [[ -f "${HOSTFILE}" ]]; then
+HOSTLIST=$(collectHostsFromFile "$HOSTFILE")
+else
+# the hostfile variable is a single hostname
+HOSTLIST="${HOSTFILE}"
+fi
+
+for HOST in ${HOSTLIST}; do
+if [[ $SID = 0 ]]; then
+SIDLIST=$(orcl_getsids $HOST)
+else
+# user specified a single sid
+SIDLIST="$SID"
+fi
+
+
+for w in ${SIDLIST}; do 
+cat /dev/null > "${TFILE}"
+if [[ $V = 1 ]]; then
+printf "Processing on %s %s:\n" "${HOST}" "${w}" 
+printf ">> %s %s:\n" "${HOST}" "${w}" >> "${TFILE}"
+fi
+cat "${SQLFILE}" | ssh -T -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@$HOST "export ORACLE_SID=$w;export ORAENV_ASK=NO;. oraenv >/dev/null;sqlplus -S '/ as sysdba' " >>  ${TFILE} 
+
+# check for errors
+grep -q -i -e "^ORA-" "${TFILE}"
+OK=$?
+if [[ $OK -eq 0 ]]; then
+printf ">> %s %s:\n" "${HOST}" "${w}" 
+grep -i -e "^ORA-" "${TFILE}"
+echo "$HOST $w Query Failed" >> ${FINAL}
+else
+cat ${TFILE} >> ${FINAL}
+fi
+done
+
+done
+
+cp ${FINAL} ${TFILE2}
+cat ${TFILE2} | perl -e 'while (<>) {$_=~s/[ \t]+$//g;print;}' > $FINAL
+cat ${FINAL}
+# cleanup
+rm /tmp/*${TS}*
+exit 0
+##############################################

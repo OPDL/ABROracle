@@ -26,9 +26,10 @@ EOF
 
 ####################################
 # initialize argument variables
-SID=0
+SID=
 V=
 E=
+CMDLIST=
 ####################################
 # process command line arguments
 # options with : after them expect an argument
@@ -58,6 +59,19 @@ do
      esac
 done
 ####################################
+# validate arguments
+if [[ -z $CMDLIST ]]
+then
+     usage
+     exit 1
+fi
+
+if [[ -z $SIDS ]]
+then
+     usage
+     exit 1
+fi
+####################################
 # validate CMD LIST
 # force uppercase
 CMDLIST=$(echo "${CMDLIST}" | tr '[a-z]' '[A-Z]')
@@ -80,7 +94,7 @@ case "${CMD}" in
 "SHOWALL")
 ;;
 *)
-printf "Invalid command %s. exiting.\n"  "${CMD}"
+printf "ERROR! Invalid command \"%s\". exiting.\n\n"  "${CMD}"
 usage
 exit 1
 ;;
@@ -115,18 +129,20 @@ VALID=$?
 
 if [[ $VALID != 0 ]]; then
 # attempt using sid as all lowercase
+LSID=$(echo "${SID}" | tr '[A-Z]' '[a-z]')
 unset ORACLE_HOME; unset ORACLE_SID
 . /usr/local/bin/oraenv 1> /dev/null 2>&1 <<EOF
-${SID,,}
+${LSID}
 EOF
 which rman 1>/dev/null 2>&1
 VALID=$?
 fi
 if [[ $VALID != 0 ]]; then
 # attempt using sid as all uppercase
+USID=$(echo "${SID}" | tr '[a-z]' '[A-Z]')
 unset ORACLE_HOME; unset ORACLE_SID
 . /usr/local/bin/oraenv 1> /dev/null 2>&1 <<EOF
-${SID^^}
+${USID}
 EOF
 which rman 1>/dev/null 2>&1
 VALID=$?
