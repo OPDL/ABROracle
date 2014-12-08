@@ -123,6 +123,8 @@ else
 cat ${TFILE} >> ${FINAL}
 fi
 }
+function processRequest()
+{
 ####################################
 # look through pwfile
 IFS_ORIG=$IFS
@@ -139,19 +141,44 @@ H=$(printf "%s" "${RECORD}" | cut -d'|' -f1 )
 S=$(printf "%s" "${RECORD}" | cut -d'|' -f2 )
 UN=$(printf "%s" "${RECORD}" | cut -d'|' -f3 )
 PW=$(printf "%s" "${RECORD}" | cut -d'|' -f4 )
+# 
+H=$(printf "%s" "${H}" | sed -e 's/^ *//' -e 's/ *$//')
+S=$(printf "%s" "${S}" | sed -e 's/^ *//' -e 's/ *$//')
+UN=$(printf "%s" "${UN}" | sed -e 's/^ *//' -e 's/ *$//')
+PW=$(printf "%s" "${PW}" | sed -e 's/^ *//' -e 's/ *$//')
 # if processin ALL
 if [[ $A -eq 1 ]]; then
 	printf "Processing %s %s %s \n" "${H}" "${S}" "${UN}" 
 	resetPW "${H}" "${S}" "${UN}" "${PW}"
 else
-	if [[ ! -z $HOST ]] && [[ $A -eq 0 ]] && [[ -z $SID ]]; then
+	if [[ ! -z $HOST ]] && [[ -z $SID ]] && [[ -z $UNAME ]] && [[ $A -eq 0 ]] ; then
+		if [[ "${HOST}" = "${H}" ]]; then
+		printf "Processing %s %s %s \n" "${H}" "${S}" "${UN}" 
+		fi
+	fi
+	if [[ ! -z $HOST ]] && [[ ! -z $SID ]] && [[ -z $UNAME ]] && [[ $A -eq 0 ]] ; then
+		if [[ "${HOST}" = "${H}" ]] && [[ "${SID}" = "${S}" ]]; then
+		printf "Processing %s %s %s \n" "${H}" "${S}" "${UN}" 
+		fi
+	fi
+	if [[ ! -z $HOST ]] && [[ ! -z $SID ]] && [[ ! -z $UNAME ]] && [[ $A -eq 0 ]] ; then
+		if [[ "${HOST}" = "${H}" ]] && [[ "${SID}" = "${S}" ]] && [[ "${UNAME}" = "${UN}" ]]; then
+		printf "Processing %s %s %s \n" "${H}" "${S}" "${UN}" 
+		fi
 	fi
 fi
 done
 IFS=$IFS_ORIG
-###################################
-# check identity file for non interactive 
-
+}
+####################################
+processRequest "list"
+read -p "execute update?enter "yes" to proceed, return to abort: " r 
+if [[ "${r}" = "yes" ]]; then
+	processRequest "execute"
+else
+	printf "\nUser aborted\n"
+	exit 1
+fi
 ####################################
 # cleanup and display output of all steps
 if [[ -f "${FINAL}" ]]; then
