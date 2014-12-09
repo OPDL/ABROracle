@@ -1,0 +1,65 @@
+#!/bin/bash
+# Author: Adam Richards
+# set -x
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# load support files
+####################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $(basename $0) options
+Author: Adam Richards
+Enable and Disable crontab entries
+
+OPTIONS:
+-h        help
+-c value  enable|disable
+EOF
+}
+
+####################################
+# initialize argument variables
+CMD=
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hc:” OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         c)
+             CMD=$OPTARG
+             ;;
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+####################################
+# validate arguments
+CMD=$(printf "%s" "${CMD}" | sed -e 's/^ *//' -e 's/ *$//')
+CMD=$(echo "${CMD}" | tr '[a-z]' '[A-Z]')
+case "${CMD}" in
+"ENABLE")
+crontab -l | perl -e 'while (<>) {$_=~s/#DISABLED //g; print "$_" ; };' | crontab -
+;;
+"DISABLE")
+crontab -l | perl -e 'while (<>) {if ($_=~m/^(\s*)([^#].*$)/s) {print "$1#DISABLED $2";} else {print $_;}};' | crontab -
+;;
+*)
+printf "Invalid command %s. exiting.\n"  "${CMD}"
+usage
+exit 1
+esac
+
+
+exit 0
+####################################

@@ -125,6 +125,14 @@ fi
 }
 function processRequest()
 {
+CLIST=0
+CEXE=0
+if [[ "${1}" = "list" ]]; then
+CLIST=1
+fi
+if [[ "${1}" = "execute" ]]; then
+CEXE=1
+fi
 ####################################
 # look through pwfile
 IFS_ORIG=$IFS
