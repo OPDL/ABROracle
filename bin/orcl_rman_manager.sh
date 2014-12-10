@@ -13,17 +13,28 @@ usage()
 cat << EOF
 usage: $(basename $0) options
 Author: Adam Richards
-wrapper for running oracle rman scripts
+wrapper for running oracle rman scripts.
+commands reference external rman script files.
+variable subsitution can be used inside some
+scripts.
+the variable RMAN_DIR defines script directory.
 
 OPTIONS:
 -h        help
--c	  command: backup|validate|list|showall|crosscheck|purge[,cmd2,cmd3...cmdN]
+-c value  command: backup|validate|list|showall|crosscheck|purge[,cmd2,cmd3...cmdN]
 -s value  sid1[,sid2,sid3]
 -e 	  use /etc/oratab for sids
 -v        verbose
 EOF
 }
 
+####################################
+function validateSID()
+{
+export ORACLE_SID="${1}";export ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
+which rman 1> /dev/null 2>&1
+echo $?
+}
 ####################################
 # initialize argument variables
 SID=
@@ -60,14 +71,12 @@ do
 done
 ####################################
 # validate arguments
-if [[ -z $CMDLIST ]]
-then
+if [[ -z $CMDLIST ]]; then
      usage
      exit 1
 fi
 
-if [[ -z $SIDS ]]
-then
+if [[ -z $SIDS ]] && [[ -z $E ]] ; then
      usage
      exit 1
 fi
@@ -108,6 +117,7 @@ else
 # validate single sid
 SIDS=$(echo "${SIDS}" | sort | tr ',' ' ')
 fi
+
 ####################################
 export NLS_DATE_FORMAT='yyyymmdd hh24:mi:ss'
 
@@ -120,32 +130,17 @@ SID=$(printf "%s" "${SID}" | sed -e 's/^ *//' -e 's/ *$//')
 OSID="${SID}"
 printf "***** STARTING RMAN RUN: %s \n" "$(date +'%Y-%m-%d %H:%M:%S')"
 
-unset ORACLE_HOME; unset ORACLE_SID
-. /usr/local/bin/oraenv 1> /dev/null 2>&1 <<EOF
-${SID}
-EOF
-which rman 1>/dev/null 2>&1
-VALID=$?
+VALID=$(validateSID "${SID}")
 
 if [[ $VALID != 0 ]]; then
 # attempt using sid as all lowercase
-LSID=$(echo "${SID}" | tr '[A-Z]' '[a-z]')
-unset ORACLE_HOME; unset ORACLE_SID
-. /usr/local/bin/oraenv 1> /dev/null 2>&1 <<EOF
-${LSID}
-EOF
-which rman 1>/dev/null 2>&1
-VALID=$?
+SID=$(echo "${SID}" | tr '[A-Z]' '[a-z]')
+VALID=$(validateSID "${SID}")
 fi
 if [[ $VALID != 0 ]]; then
 # attempt using sid as all uppercase
-USID=$(echo "${SID}" | tr '[a-z]' '[A-Z]')
-unset ORACLE_HOME; unset ORACLE_SID
-. /usr/local/bin/oraenv 1> /dev/null 2>&1 <<EOF
-${USID}
-EOF
-which rman 1>/dev/null 2>&1
-VALID=$?
+SID=$(echo "${SID}" | tr '[a-z]' '[A-Z]')
+VALID=$(validateSID "${SID}")
 fi
 
 # if still not working, then sid must be no good, skip this sid
@@ -154,7 +149,8 @@ if [[ $VALID != 0 ]]; then
 	continue
 fi
 
-SID="${ORACLE_SID}"
+export ORACLE_SID="${SID}";ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
+
 for CMD in ${CMDLIST}; do
 # clean sid string
 CMD=$(printf "%s" "${CMD}" | sed -e 's/^ *//' -e 's/ *$//')
