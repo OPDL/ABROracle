@@ -3,9 +3,10 @@
 ###############################
 # Author: Adam Richards
 # Description: wrapper for expdp 
+# update: 07/15/2014
 ###############################
 # required variables 
-PWFILE=/orabacklin/work/DATAPUMP/bin/pwfile
+PWFILE=/orabacklin/work/DBA/DATAPUMP/bin/pwfile
 ODIR=DATA_PUMP_DIR_XA_SHARED
 ###############################
 # process command line arguments
@@ -15,19 +16,26 @@ cat << EOF
 usage: $0 options
 
 Run oracle expdp based on template par file
+dump files are gzipped and stored.
 
 OPTIONS:
    -h      Show this message
    -s      Oracle SID [required]
    -t      Parameter template file [required]
+   -i      ignore errors 
+   -g      stage.  leave DMP files in stage area
+   -k      key string.  add a key string to the output directory
 EOF
 }
 
 # initialize argument variables
 TEMPLATEFILE=
 SID=
+STAGE=0
+IGNORE=0
+KEYSTRING=
 # options with : after them expect an argument
-while getopts “hs:t:” OPTION
+while getopts “hs:t:k:ig” OPTION
 do
      case $OPTION in
          h)
@@ -39,6 +47,15 @@ do
              ;;
          s)
              SID=$OPTARG
+             ;;
+         k)
+             KEYSTRING=$OPTARG
+             ;;
+         g)
+             STAGE=1
+             ;;
+         i)
+             IGNORE=1
              ;;
          ?)
              usage
@@ -56,6 +73,13 @@ if [[ ! -f $TEMPLATEFILE ]]; then
      echo "Parameter file $TEMPLATEFILE does not exist."
      exit 1
 fi
+###############################
+function convertsecs {
+    h=$(($1/3600))
+    m=$((($1/60)%60))
+    s=$(($1%60))
+    printf "%06d:%02d:%02d" $h $m $s
+}
 ###############################
 # get password for password file
 PWD=
@@ -100,8 +124,13 @@ fi
 printf "Oracle Directory path: %s\n" "$DIRPATH"
 ########################################################
 # create output dir
-OUTDIR=${WD}/exports/${SID}/${SID}_export_${TS} 
-mkdir -p ${OUTDIR}
+if [[ -z $KEYSTRING ]]; then
+OUTDIR="${WD}/exports/${SID}/${SID}_export_${TS}"
+else
+KEYSTRING=$(echo "$KEYSTRING" | tr ' ' '-' )
+OUTDIR="${WD}/exports/${SID}/${SID}_export_${KEYSTRING}_${TS}"
+fi
+mkdir -p "${OUTDIR}"
 ###############################
 BNAME=$(basename "${TEMPLATEFILE}" | tr ' ' '_' |tr '.' '_')
 PARFILE=${OUTDIR}/${BNAME}_${TS}.par
@@ -121,52 +150,98 @@ echo "Starting export datapump"
 STARTTIME=$(date +%s)
 expdp system/${PWD} parfile=${PARFILE} 
 OK=$?
-if [[ ! $OK = 0 ]]; then
+if [[ ! $OK = 0 ]] && [[ $IGNORE = 0 ]]; then
 	echo "Error: expdp failed!"
 	rm -rfv ${OUTDIR}
 	exit $OK
 fi
 ENDTIME=$(date +%s)
 ETIMESEC=$[ $ENDTIME - $STARTTIME ]
-function convertsecs {
-    h=$(($1/3600))
-    m=$((($1/60)%60))
-    s=$(($1%60))
-    printf "%06d:%02d:%02d" $h $m $s
-}
 ETIMESTR=$(convertsecs ${ETIMESEC})
-TIMESTR=$(echo "Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}")
+TIMESTR="Export Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}"
+echo ${TIMESTR}
 echo ${TIMESTR} > ${OUTDIR}/export_info_${TS}.txt
 ########################################################
-echo "Completed export data pump"
-echo "Moving dump files to ${OUTDIR} ... "
-mv  ${DIRPATH}/*${TS}* ${OUTDIR}
+echo "Completed export data pump."
+if [[ $STAGE = 0 ]]; then
+	echo "Moving dump files to ${OUTDIR} ... "
+	mv  ${DIRPATH}/*${TS}* ${OUTDIR}
+else
+	STARTTIME=$(date +%s)
+	echo "Copying dump files to ${OUTDIR} ... "
+	cp -p  ${DIRPATH}/*${TS}* ${OUTDIR}
+	ENDTIME=$(date +%s)
+	ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+	ETIMESTR=$(convertsecs ${ETIMESEC})
+	TIMESTR="File Copy Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}"
+	echo ${TIMESTR}
+	echo ${TIMESTR} >> ${OUTDIR}/export_info_${TS}.txt
+fi
 ########################################################
+STARTTIME=$(date +%s)
 NCPU=$(cat /proc/cpuinfo  | grep "^processor" |wc -l)
-THREADMAX=$(echo $( expr 0.33*${NCPU} |bc ) | perl -nl -MPOSIX -e 'print ceil($_);')
-echo "Using ${THREADMAX} processors out of ${NCPU} available"
+THREADMAX=$(echo $( expr 0.20*${NCPU} |bc ) | perl -nl -MPOSIX -e 'print ceil($_);')
+echo "Using ${THREADMAX} threads out of ${NCPU} available"
 echo "Compressing DMP files in parallel ... "
 COUNT=0
+# dummy first pid
+PLIST=""
 
+# LOOP THROUGH FILES
 find "${OUTDIR}" -type f -name "*.DMP" -print0 | while IFS= read -r -d '' F; do
 COUNT=$(( $COUNT+1 ))
 
 # submit a job
 printf "Compressing %s \n" "$F" 
 gzip "${F}" > /dev/null 2>&1 &
+PID=$!
+PLIST="${PLIST} $PID"
 
+# limit running processes to max process count
 if [[ $(( $COUNT%$THREADMAX )) -eq 0 ]] ; then
-	printf "Waiting for threads to finish...\n"
-	wait
+	# loop and wait for thread to finish
+	while (true); do
+        # LOOP THROUGH PID LIST
+	for PID in ${PLIST}; do
+        ISR=$(ps -p $PID --no-headers | wc -l)
+		if [[ $ISR = 0 ]]; then
+			PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
+			COUNT=$(( $COUNT-1 ))
+		fi
+	#printf "%s %s %s\n" "${PID}" "${ISR}" "${COUNT}"
+	done
+	if [[ $COUNT -lt $THREADMAX ]] ; then
+		break
+	fi
+        printf "Waiting for current threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
+        sleep 10
+	done
 fi
 done
 
-# wait for rest to finish
-printf "Waiting for final threads to finish...\n"
-wait
-########################################################
-printf "\n\nSummary:\n"
+# wait for remaining processes
+while (true); do
+for PID in ${PLIST}; do
+ISR=$(ps -p $PID --no-headers | wc -l)
+	if [[ $ISR = 0 ]]; then
+		PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
+		COUNT=$(( $COUNT-1 ))
+	fi
+done
+if [[ $COUNT -eq 0  ]] ; then
+	break
+fi
+printf "Waiting for final threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
+sleep 10
+done
+
+ENDTIME=$(date +%s)
+ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+ETIMESTR=$(convertsecs ${ETIMESEC})
+TIMESTR="File Compression Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}"
 echo ${TIMESTR}
-echo "Work directory:  ${OUTDIR}"
+echo ${TIMESTR} >> ${OUTDIR}/export_info_${TS}.txt
+########################################################
+echo "Output directory:  ${OUTDIR}"
 ########################################################
 exit 0
