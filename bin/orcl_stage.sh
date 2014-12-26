@@ -59,6 +59,13 @@ if [[ ! -d $SOURCEDIR ]]; then
      exit 1
 fi
 ###############################
+function convertsecs {
+    h=$(($1/3600))
+    m=$((($1/60)%60))
+    s=$(($1%60))
+    printf "%06d:%02d:%02d" $h $m $s
+}
+###############################
 # get working directory
 WD=$(pwd)
 # get time stamp
@@ -89,7 +96,7 @@ printf "Error finding directory path\n %s" "${DIRPATH}"
 exit 1
 fi
 ########################################################
-FILELIST=$(ls -c1 ${SOURCEDIR}/*.DMP.gz)
+FILELIST=$(ls -c1 ${SOURCEDIR}/*.DMP.gz |sort)
 # list files to be extracted
 echo "The following files have been identified for extraction:"
 for f in ${FILELIST}; do
@@ -113,17 +120,20 @@ fi
 # begin work
 STARTTIME=$(date +%s)
 
-echo "Extracting to Oracle directory: ${DIRPATH}"
-echo "Extracting files ... "
+echo "Target Oracle directory: ${ODIR}.  Physical path: ${DIRPATH}"
 echo "Decompressing DMP files in parallel ... "
 
 ########################################################
+########################################################
+STARTTIME=$(date +%s)
 NCPU=$(cat /proc/cpuinfo  | grep "^processor" |wc -l)
-THREADMAX=$(echo $( expr 0.33*${NCPU} |bc ) | perl -nl -MPOSIX -e 'print ceil($_);')
-echo "Using ${THREADMAX} processors out of ${NCPU} available"
-echo "Compressing DMP files in parallel ... "
+THREADMAX=$(echo $( expr 0.20*${NCPU} |bc ) | perl -nl -MPOSIX -e 'print ceil($_);')
+echo "Using ${THREADMAX} threads out of ${NCPU} available"
 COUNT=0
+# dummy first pid
+PLIST=""
 
+# LOOP THROUGH FILES
 for F in ${FILELIST}; do
 COUNT=$(( $COUNT+1 ))
 
@@ -131,26 +141,52 @@ COUNT=$(( $COUNT+1 ))
 printf "Decompressing %s \n" "$F"
 BNAME=$(basename "${F}" .gz)
 gzip -dc <  "${F}" > "${DIRPATH}"/"${BNAME}" &
+PID=$!
+PLIST="${PLIST} $PID"
 
+# limit running processes to max process count
 if [[ $(( $COUNT%$THREADMAX )) -eq 0 ]] ; then
-        printf "Waiting for threads to finish...\n"
-        wait
+        # loop and wait for thread to finish
+        while (true); do
+        # LOOP THROUGH PID LIST
+        for PID in ${PLIST}; do
+        ISR=$(ps -p $PID --no-headers | wc -l)
+                if [[ $ISR = 0 ]]; then 
+                        PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
+                        COUNT=$(( $COUNT-1 ))
+                fi
+        #printf "%s %s %s\n" "${PID}" "${ISR}" "${COUNT}"
+        done
+        if [[ $COUNT -lt $THREADMAX ]] ; then
+                break
+        fi 
+        printf "Waiting for current threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
+        sleep 10
+        done
 fi
 done
 
-# wait for rest to finish
-printf "Waiting for final threads to finish...\n"
-wait
+while (true); do
+	for PID in ${PLIST}; do 
+	ISR=$(ps -p $PID --no-headers | wc -l)
+		if [[ $ISR = 0 ]]; then
+			PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
+			COUNT=$(( $COUNT-1 ))
+		fi
+	done 
+
+	if [[ $COUNT -eq 0  ]] ; then
+		break
+	fi
+
+	printf "Waiting for final threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
+	sleep 10
+done
+
 ########################################################
 echo "done"
 ENDTIME=$(date +%s)
 ETIMESEC=$[ $ENDTIME - $STARTTIME ]
-function convertsecs {
-    h=$(($1/3600))
-    m=$((($1/60)%60))
-    s=$(($1%60))
-    printf "%06d:%02d:%02d" $h $m $s
-}
 ETIMESTR=$(convertsecs ${ETIMESEC})
 TIMESTR=$(echo "Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}")
 echo ""
