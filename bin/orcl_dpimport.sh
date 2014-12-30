@@ -5,7 +5,7 @@
 # Description: wrapper for impdp 
 ###############################
 # required variables 
-PWFILE=/orabacklin/work/DATAPUMP/bin/pwfile
+PWFILE=/orabacklin/work/DBA/DATAPUMP/bin/pwfile
 ODIR=DATA_PUMP_DIR_XA_SHARED
 ###############################
 # process command line arguments
@@ -62,20 +62,22 @@ if [[ ! -f $TEMPLATEFILE ]]; then
      exit 1
 fi
 ###############################
-# get password for password file
-PWD=
-PWLIST=$(cat ${PWFILE} | tr '\r\n' ' ')
-for PWREC in ${PWLIST}; do
-PSID=$(echo ${PWREC} | cut -d: -f1 )
-RE="${SID}?"
-if [[ $PSID =~ $RE  ]]; then
-PWD=$(echo ${PWREC} | cut -d: -f2 )
-fi
-done
-if [[ -z $PWD ]]; then
-echo "Unable to lookup password."
-exit 1
-fi
+function convertsecs {
+    h=$(($1/3600))
+    m=$((($1/60)%60))
+    s=$(($1%60))
+    printf "%06d:%02d:%02d" $h $m $s
+}
+###############################
+function validateSID()
+{
+# clear path with bad SID
+export ORACLE_SID="BADBADBAD";export ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
+# try passed in SID
+export ORACLE_SID="${1}";export ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
+which sqlplus 1> /dev/null 2>&1
+echo $?
+}
 ###############################
 # get current directory
 WD=$(pwd)
@@ -83,10 +85,27 @@ WD=$(pwd)
 TS=$(date +%F-%H-%M-%S|tr -d ' ')
 ###############################
 # setup oracle envrionment using oraenv
-export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null < /dev/null
-OK=$(echo $ORACLE_BASE | tr -d ' ')
-if [[ -z $OK ]]; then
+VALID=$(validateSID "${SID}")
+
+if [[ $VALID != 0 ]]; then
 echo "Invalid SID ${SID}"
+exit 1
+fi
+
+export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null < /dev/null
+###############################
+# get password for password file
+PWD=
+PWLIST=$(cat ${PWFILE} | tr '\r\n' ' ')
+for PWREC in ${PWLIST}; do
+	PSID=$(echo ${PWREC} | cut -d: -f1 )
+	RE="${SID}?"
+	if [[ $PSID =~ $RE  ]]; then
+		PWD=$(echo ${PWREC} | cut -d: -f2 )
+	fi
+done
+if [[ -z $PWD ]]; then
+	echo "Unable to lookup password."
 exit 1
 fi
 ########################################################
@@ -95,7 +114,8 @@ DIRPATH=$(sqlplus -S system/${PWD} << EOF
 set heading off
 select directory_path from dba_directories where directory_name = '${ODIR}';
 exit
-EOF)
+EOF
+)
 DIRPATH=$(echo $DIRPATH | tr -d '\r\n')
 OK=$(echo $DIRPATH | tr -d ' ')
 if [[ -z $OK ]]; then
@@ -137,28 +157,27 @@ function map_keys
 ################################
 DMPLIST=$(ls -c1 /orabacklin/datapump/*${DMPKEY}*.DMP | xargs -I '{}' basename '{}' .DMP | sort)
 for f in $DMPLIST; do
-SETNAME=$(echo ${f} | perl -n -e 'if ($_=~m/^(.*)_\d\d$/) {print $1};')
-if [[ -z ${SETNAME} ]]; then
-SETNAME="${f}"
-else
-SETNAME="${SETNAME}_"
-fi
-V=$(map_get SETMAP "${SETNAME}")
-if [[ -z $V ]]; then
-V=0
-fi
-V=$(( $V+1 ))
-map_put SETMAP "${SETNAME}" $V
+	SETNAME=$(echo ${f} | perl -n -e 'if ($_=~m/^(.*)_\d\d$/) {print $1};')
+	if [[ -z ${SETNAME} ]]; then
+		SETNAME="${f}"
+	else
+		SETNAME="${SETNAME}_"
+	fi
+	V=$(map_get SETMAP "${SETNAME}")
+	if [[ -z $V ]]; then
+		V=0
+	fi
+	V=$(( $V+1 ))
+	map_put SETMAP "${SETNAME}" $V
 done
 
+CNT=0
 for K in $(map_keys SETMAP); do
-V=$(map_get SETMAP "${K}")
-echo "$K $V"
+	CNT=$(( $CNT +1 ))
+	V=$(map_get SETMAP "${K}")
+	printf "%2d. Key: %s Number of Files: %s \n" $CNT "$K" "$V"
 done
-########################################################
 exit
-########################################################
-# confirm DMP file set
 ########################################################
 # create output dir
 OUTDIR=${WD}/imports/${SID}/${SID}_export_${TS} 
@@ -172,11 +191,12 @@ PARFILETEXT=$(cat ${TEMPLATEFILE})
 PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{TS\}/${TS}/g")
 PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{ODIR\}/${ODIR}/g")
 PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{SID\}/${SID}/g")
+PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{DMPFILE\}/${DMPFILE}/g")
 echo "${PARFILETEXT}" > ${PARFILE}
 ########################################################
-echo "Starting export data pump"
+echo "Starting import data pump"
 STARTTIME=$(date +%s)
-expdp system/${PWD} parfile=${PARFILE} 
+impdp system/${PWD} parfile=${PARFILE} 
 OK=$?
 if [[ ! $OK = 0 ]]; then
 	echo "Error: expdp failed!"
@@ -185,22 +205,13 @@ if [[ ! $OK = 0 ]]; then
 fi
 ENDTIME=$(date +%s)
 ETIMESEC=$[ $ENDTIME - $STARTTIME ]
-function convertsecs {
-    h=$(($1/3600))
-    m=$((($1/60)%60))
-    s=$(($1%60))
-    printf "%06d:%02d:%02d" $h $m $s
-}
 ETIMESTR=$(convertsecs ${ETIMESEC})
 TIMESTR=$(echo "Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}")
 echo ${TIMESTR} > ${OUTDIR}/export_info_${TS}.txt
 ########################################################
-echo "Completed export data pump"
+echo "Completed import data pump"
 echo "Moving output to  ${OUTDIR}"
 mv -v ${DIRPATH}/*${TS}* ${OUTDIR}
-########################################################
-echo "Compressing DMP files"
-gzip -v ${OUTDIR}/*.DMP
 ########################################################
 printf "\n\nSummary:\n"
 echo ${TIMESTR}

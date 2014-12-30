@@ -3,6 +3,8 @@
 ###############################
 # Author: Adam Richards
 # Description: wrapper for expdp 
+# export files are placed in a directory named exports
+# in the current working directory.
 # update: 07/15/2014
 ###############################
 # required variables 
