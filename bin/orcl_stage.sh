@@ -9,6 +9,7 @@
 ###############################
 # required variables 
 ODIR=DATA_PUMP_DIR_XA_SHARED
+SLEEP=10
 ###############################
 # process command line arguments
 usage()
@@ -122,8 +123,6 @@ STARTTIME=$(date +%s)
 
 echo "Target Oracle directory: ${ODIR}.  Physical path: ${DIRPATH}"
 echo "Decompressing DMP files in parallel ... "
-
-########################################################
 ########################################################
 STARTTIME=$(date +%s)
 NCPU=$(cat /proc/cpuinfo  | grep "^processor" |wc -l)
@@ -155,13 +154,12 @@ if [[ $(( $COUNT%$THREADMAX )) -eq 0 ]] ; then
                         PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
                         COUNT=$(( $COUNT-1 ))
                 fi
-        #printf "%s %s %s\n" "${PID}" "${ISR}" "${COUNT}"
         done
         if [[ $COUNT -lt $THREADMAX ]] ; then
                 break
         fi 
         printf "Waiting for current threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
-        sleep 10
+        sleep $SLEEP
         done
 fi
 done
@@ -180,7 +178,7 @@ while (true); do
 	fi
 
 	printf "Waiting for final threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
-	sleep 10
+	sleep $SLEEP
 done
 
 ########################################################

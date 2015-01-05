@@ -10,6 +10,7 @@
 # required variables 
 PWFILE=/orabacklin/work/DBA/DATAPUMP/bin/pwfile
 ODIR=DATA_PUMP_DIR_XA_SHARED
+SLEEP=10
 ###############################
 # process command line arguments
 usage()
@@ -165,20 +166,6 @@ echo ${TIMESTR}
 echo ${TIMESTR} > ${OUTDIR}/export_info_${TS}.txt
 ########################################################
 echo "Completed export data pump."
-if [[ $STAGE = 0 ]]; then
-	echo "Moving dump files to ${OUTDIR} ... "
-	mv  ${DIRPATH}/*${TS}* ${OUTDIR}
-else
-	STARTTIME=$(date +%s)
-	echo "Copying dump files to ${OUTDIR} ... "
-	cp -p  ${DIRPATH}/*${TS}* ${OUTDIR}
-	ENDTIME=$(date +%s)
-	ETIMESEC=$[ $ENDTIME - $STARTTIME ]
-	ETIMESTR=$(convertsecs ${ETIMESEC})
-	TIMESTR="File Copy Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}"
-	echo ${TIMESTR}
-	echo ${TIMESTR} >> ${OUTDIR}/export_info_${TS}.txt
-fi
 ########################################################
 STARTTIME=$(date +%s)
 NCPU=$(cat /proc/cpuinfo  | grep "^processor" |wc -l)
@@ -190,52 +177,59 @@ COUNT=0
 PLIST=""
 
 # LOOP THROUGH FILES
-find "${OUTDIR}" -type f -name "*.DMP" -print0 | while IFS= read -r -d '' F; do
+while read -r F; do
 COUNT=$(( $COUNT+1 ))
 
 # submit a job
 printf "Compressing %s \n" "$F" 
-gzip "${F}" > /dev/null 2>&1 &
+BN=$(basename "${F}")
+gzip -c < "${F}" > "${OUTDIR}/${BN}.gz" &
 PID=$!
 PLIST="${PLIST} $PID"
 
 # limit running processes to max process count
 if [[ $(( $COUNT%$THREADMAX )) -eq 0 ]] ; then
 	# loop and wait for thread to finish
+        printf "Waiting for current threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
 	while (true); do
+	printf "Current file count: %s Current process list: [%s]\n" "${COUNT}" "${PLIST}"
         # LOOP THROUGH PID LIST
 	for PID in ${PLIST}; do
         ISR=$(ps -p $PID --no-headers | wc -l)
 		if [[ $ISR = 0 ]]; then
+			printf "... Processes %s finished\n" "${PID}"
 			PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
 			COUNT=$(( $COUNT-1 ))
 		fi
-	#printf "%s %s %s\n" "${PID}" "${ISR}" "${COUNT}"
 	done
 	if [[ $COUNT -lt $THREADMAX ]] ; then
 		break
 	fi
-        printf "Waiting for current threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
-        sleep 10
+        sleep ${SLEEP} 
 	done
 fi
-done
+done << EOT
+$(find "${DIRPATH}" -type f -name "*${TS}*.DMP" |sort )
+EOT
 
 # wait for remaining processes
+printf "Waiting for FINAL threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
 while (true); do
-for PID in ${PLIST}; do
-ISR=$(ps -p $PID --no-headers | wc -l)
-	if [[ $ISR = 0 ]]; then
-		PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
-		COUNT=$(( $COUNT-1 ))
+	printf "Current file count: %s Current process list: [%s]\n" "${COUNT}" "${PLIST}"
+	for PID in ${PLIST}; do
+	ISR=$(ps -p $PID --no-headers | wc -l)
+		if [[ $ISR = 0 ]]; then
+			printf "... Processes %s finished\n" "${PID}"
+			PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
+			COUNT=$(( $COUNT-1 ))
+		fi
+	done
+	if [[ $COUNT -eq 0  ]] ; then
+		break
 	fi
+	sleep ${SLEEP}
 done
-if [[ $COUNT -eq 0  ]] ; then
-	break
-fi
-printf "Waiting for final threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
-sleep 10
-done
+printf "Final file count: %s Current process list: [%s]\n" "${COUNT}" "${PLIST}"
 
 ENDTIME=$(date +%s)
 ETIMESEC=$[ $ENDTIME - $STARTTIME ]
@@ -243,6 +237,18 @@ ETIMESTR=$(convertsecs ${ETIMESEC})
 TIMESTR="File Compression Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}"
 echo ${TIMESTR}
 echo ${TIMESTR} >> ${OUTDIR}/export_info_${TS}.txt
+########################################################
+if [[ $STAGE = 0 ]]; then
+	STARTTIME=$(date +%s)
+	echo "Removing dump files from ${DIRPATH} ... "
+	rm  ${DIRPATH}/*${TS}* 
+	ENDTIME=$(date +%s)
+	ETIMESEC=$[ $ENDTIME - $STARTTIME ]
+	ETIMESTR=$(convertsecs ${ETIMESEC})
+	TIMESTR="Remove dump files. Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}"
+	echo ${TIMESTR}
+	echo ${TIMESTR} >> ${OUTDIR}/export_info_${TS}.txt
+fi
 ########################################################
 echo "Output directory:  ${OUTDIR}"
 ########################################################

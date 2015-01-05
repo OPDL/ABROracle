@@ -76,7 +76,8 @@ export ORACLE_SID="BADBADBAD";export ORAENV_ASK=NO;. oraenv >/dev/null < /dev/nu
 # try passed in SID
 export ORACLE_SID="${1}";export ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
 which sqlplus 1> /dev/null 2>&1
-echo $?
+OK=$?
+printf "%d" "${OK}"
 }
 ###############################
 # get current directory
@@ -115,7 +116,13 @@ set heading off
 select directory_path from dba_directories where directory_name = '${ODIR}';
 exit
 EOF
-)
+ 2>&1)
+OK=$(echo $DIRPATH | grep -c "ORA-")
+if [[ $OK != 0 ]]; then
+echo "Invalid SID ${SID} or instance has not been started."
+exit 1
+fi
+
 DIRPATH=$(echo $DIRPATH | tr -d '\r\n')
 OK=$(echo $DIRPATH | tr -d ' ')
 if [[ -z $OK ]]; then
@@ -171,20 +178,42 @@ for f in $DMPLIST; do
 	map_put SETMAP "${SETNAME}" $V
 done
 
+#######################################################
+OK=0
+while [[ $OK -eq 0 ]]; do
 CNT=0
 for K in $(map_keys SETMAP); do
 	CNT=$(( $CNT +1 ))
 	V=$(map_get SETMAP "${K}")
 	printf "%2d. Key: %s Number of Files: %s \n" $CNT "$K" "$V"
 done
-exit
-########################################################
-# create output dir
-OUTDIR=${WD}/imports/${SID}/${SID}_export_${TS} 
-mkdir -p ${OUTDIR}
-###############################
-BNAME=$(basename "${TEMPLATEFILE}" | tr ' ' '_' |tr '.' '_')
-PARFILE=${OUTDIR}/${BNAME}_${TS}.par
+
+printf "\n"
+read -p "Select dump file set number [0 to abort]: " N
+
+# test if integer
+if [ $N -eq $N 2>/dev/null ] && ! [ -z $N ]; then
+if (( $N == 0 )); then
+	exit 1
+fi
+if (( $N > 0 )) && (( $N <= $CNT )); then
+	OK=$N
+else
+	printf "  invalid selection %s\n" "${N}"
+fi
+else
+	printf "  invalid integer %s\n" "${N}"
+fi
+done
+
+CNT=0
+for K in $(map_keys SETMAP); do
+	CNT=$(( $CNT +1 ))
+	V=$(map_get SETMAP "${K}")
+	if (( $CNT == $OK)); then
+		DMPFILE="${K}%U.DMP"
+	fi	
+done
 ########################################################
 PARFILETEXT=$(cat ${TEMPLATEFILE})
 # process substitutions
@@ -192,14 +221,30 @@ PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{TS\}/${TS}/g")
 PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{ODIR\}/${ODIR}/g")
 PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{SID\}/${SID}/g")
 PARFILETEXT=$(echo "${PARFILETEXT}" | perl -pi -e "s/\\$\{DMPFILE\}/${DMPFILE}/g")
-echo "${PARFILETEXT}" > ${PARFILE}
 ########################################################
+printf "\nPreparing for import on SID: %s \n" "${SID}"
+printf "PARFILE contents:\n\n"
+printf "%s\n\n" "${PARFILETEXT}"
+# confirm
+read -p "Enter YES to proceed: " OK
+if [[ "${OK}" != "YES" ]] || [[ -z ${OK} ]]; then
+	printf "Exiting.\n"
+	exit 1
+fi
+########################################################
+# create output dir
+OUTDIR=${WD}/imports/${SID}/${SID}_export_${TS} 
+mkdir -p ${OUTDIR}
+BNAME=$(basename "${TEMPLATEFILE}" | tr ' ' '_' |tr '.' '_')
+PARFILE=${OUTDIR}/${BNAME}_${TS}.par
+echo "${PARFILETEXT}" > ${PARFILE}
 echo "Starting import data pump"
+#######################################################
 STARTTIME=$(date +%s)
 impdp system/${PWD} parfile=${PARFILE} 
 OK=$?
 if [[ ! $OK = 0 ]]; then
-	echo "Error: expdp failed!"
+	echo "Error: impdp failed!"
 	rm -rfv ${OUTDIR}
 	exit $OK
 fi
