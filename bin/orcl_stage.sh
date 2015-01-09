@@ -146,11 +146,14 @@ PLIST="${PLIST} $PID"
 # limit running processes to max process count
 if [[ $(( $COUNT%$THREADMAX )) -eq 0 ]] ; then
         # loop and wait for thread to finish
+	printf "Waiting for current threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
         while (true); do
+	printf "Current file count: %s Current process list: [%s]\n" "${COUNT}" "${PLIST}"
         # LOOP THROUGH PID LIST
         for PID in ${PLIST}; do
         ISR=$(ps -p $PID --no-headers | wc -l)
                 if [[ $ISR = 0 ]]; then 
+	printf "... Processes %s finished\n" "${PID}"
                         PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
                         COUNT=$(( $COUNT-1 ))
                 fi
@@ -158,29 +161,29 @@ if [[ $(( $COUNT%$THREADMAX )) -eq 0 ]] ; then
         if [[ $COUNT -lt $THREADMAX ]] ; then
                 break
         fi 
-        printf "Waiting for current threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
-        sleep $SLEEP
+        sleep ${SLEEP}
         done
 fi
 done
 
+printf "Waiting for FINAL threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
 while (true); do
+	printf "Current file count: %s Current process list: [%s]\n" "${COUNT}" "${PLIST}"
 	for PID in ${PLIST}; do 
 	ISR=$(ps -p $PID --no-headers | wc -l)
 		if [[ $ISR = 0 ]]; then
+			printf "... Processes %s finished\n" "${PID}"
 			PLIST=$(echo "${PLIST}" | sed "s/ $PID//")
 			COUNT=$(( $COUNT-1 ))
 		fi
 	done 
-
 	if [[ $COUNT -eq 0  ]] ; then
 		break
 	fi
-
 	printf "Waiting for final threads to finish... %s\n" "$(date +'%Y-%m-%d %H:%M:%S')"
-	sleep $SLEEP
+	sleep ${SLEEP}
 done
-
+printf "Final file count: %s Current process list: [%s]\n" "${COUNT}" "${PLIST}"
 ########################################################
 echo "done"
 ENDTIME=$(date +%s)

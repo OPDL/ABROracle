@@ -29,6 +29,32 @@ EOF
 }
 
 ####################################
+# operation to time
+####################################
+_STARTTIME=
+_ENDTTIME=
+function elapsedTime()
+{
+if [[ "${1}" = "start" ]]; then
+	_STARTTIME=$(date +%s)
+fi
+if [[ "${1}" = "stop" ]]; then
+	_ENDTIME=$(date +%s)
+	ETIMESEC=$[ $_ENDTIME - $_STARTTIME ]
+	ETIMESTR=$(convertsecs ${ETIMESEC})
+	STIMESTR=$(echo "Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}")
+	printf "%s" "${STIMESTR}"
+fi
+}
+####################################
+# convert seconds to hours, minutes, seconds
+function convertsecs {
+    h=$(($1/3600))
+    m=$((($1/60)%60))
+    s=$(($1%60))
+    printf "%06d:%02d:%02d" $h $m $s
+}
+####################################
 function validateSID()
 {
 export ORACLE_SID="${1}";export ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
@@ -128,7 +154,7 @@ SID=$(printf "%s" "${SID}" | sed -e 's/^ *//' -e 's/ *$//')
 
 # save original sid 
 OSID="${SID}"
-printf "***** STARTING RMAN RUN: %s \n" "$(date +'%Y-%m-%d %H:%M:%S')"
+printf "Info| Starting RMAN RUN| %s \n" "$(date +'%Y-%m-%d %H:%M:%S')"
 
 VALID=$(validateSID "${SID}")
 
@@ -154,7 +180,7 @@ export ORACLE_SID="${SID}";ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
 for CMD in ${CMDLIST}; do
 # clean sid string
 CMD=$(printf "%s" "${CMD}" | sed -e 's/^ *//' -e 's/ *$//')
-printf "Current settings. CMD: %s SID: %s  Oracle Home: %s \n" "${CMD}" "${SID}" "${ORACLE_HOME}"
+printf "Info| Start| %s| %s| %s \n" "${CMD}" "${SID}" "${ORACLE_HOME}"
 
 CMDFILE=""
 case "${CMD}" in
@@ -169,6 +195,9 @@ CMDFILE="${RMAN_DIR}/showall.rman"
 ;;
 "PURGE")
 CMDFILE="${RMAN_DIR}/purge.rman"
+;;
+"VALIDATE")
+CMDFILE="${RMAN_DIR}/validate.rman"
 ;;
 "BACKUP")
 # check if specific backup script exists for this sid
@@ -192,12 +221,17 @@ printf "Invalid command %s\n"  "${CMD}"
 exit 1
 ;;
 esac
-printf "Running RMAN on SID %s using file %s \n" "${SID}" "${CMDFILE}"
+
+elapsedTime "start"
+printf "Info| File| %s \n" "${CMDFILE}"
 if [[ ! -f "${CMDFILE}" ]]; then
 	printf "RMAN script file %s not found.\n" "${CMDFILE}"
 else
 rman target=/ nocatalog @"${CMDFILE}"
 fi
+ET=$(elapsedTime "stop")
+printf "Info| Complete| %s| %s| %s\n" "${CMD}" "${SID}" "${ET}"
+
 # remove temp rman file if exists
 if [[ -f "${RMANFILE}" ]]; then
 	rm "${RMANFILE}"

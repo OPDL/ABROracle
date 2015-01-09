@@ -5,8 +5,13 @@
 # Description: wrapper for impdp 
 ###############################
 # required variables 
-PWFILE=/orabacklin/work/DBA/DATAPUMP/bin/pwfile
+PWFILE=/orabacklin/work/DBA/SAFE/pwfile
 ODIR=DATA_PUMP_DIR_XA_SHARED
+###############################
+# run from the DATAPUMP dir
+# get script directory
+SWD=$(dirname ${0})
+DPDIR="${SWD}"/../DATAPUMP
 ###############################
 # process command line arguments
 usage()
@@ -99,10 +104,10 @@ export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null < /dev/nu
 PWD=
 PWLIST=$(cat ${PWFILE} | tr '\r\n' ' ')
 for PWREC in ${PWLIST}; do
-	PSID=$(echo ${PWREC} | cut -d: -f1 )
+	PSID=$(echo ${PWREC} | cut -d'|' -f2 )
 	RE="${SID}?"
 	if [[ $PSID =~ $RE  ]]; then
-		PWD=$(echo ${PWREC} | cut -d: -f2 )
+		PWD=$(echo ${PWREC} | cut -d'|' -f4 )
 	fi
 done
 if [[ -z $PWD ]]; then
@@ -233,7 +238,7 @@ if [[ "${OK}" != "YES" ]] || [[ -z ${OK} ]]; then
 fi
 ########################################################
 # create output dir
-OUTDIR=${WD}/imports/${SID}/${SID}_export_${TS} 
+OUTDIR=${DPDIR}/imports/${SID}/${SID}_export_${TS} 
 mkdir -p ${OUTDIR}
 BNAME=$(basename "${TEMPLATEFILE}" | tr ' ' '_' |tr '.' '_')
 PARFILE=${OUTDIR}/${BNAME}_${TS}.par

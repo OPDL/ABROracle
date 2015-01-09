@@ -8,15 +8,20 @@
 # update: 07/15/2014
 ###############################
 # required variables 
-PWFILE=/orabacklin/work/DBA/DATAPUMP/bin/pwfile
+PWFILE=/orabacklin/work/DBA/SAFE/pwfile
 ODIR=DATA_PUMP_DIR_XA_SHARED
 SLEEP=10
+###############################
+# run from the DATAPUMP dir
+# get script directory
+SWD=$(dirname ${0})
+DPDIR="${SWD}"/../DATAPUMP
 ###############################
 # process command line arguments
 usage()
 {
 cat << EOF
-usage: $0 options
+usage: $(basename $0) options
 
 Run oracle expdp based on template par file
 dump files are gzipped and stored.
@@ -88,10 +93,10 @@ function convertsecs {
 PWD=
 PWLIST=$(cat ${PWFILE} | tr '\r\n' ' ')
 for PWREC in ${PWLIST}; do
-PSID=$(echo ${PWREC} | cut -d: -f1 )
+PSID=$(echo ${PWREC} | cut -d'|' -f2 )
 RE="${SID}?"
 if [[ $PSID =~ $RE  ]]; then
-PWD=$(echo ${PWREC} | cut -d: -f2 )
+PWD=$(echo ${PWREC} | cut -d'|' -f4 )
 fi
 done
 if [[ -z $PWD ]]; then
@@ -128,10 +133,10 @@ printf "Oracle Directory path: %s\n" "$DIRPATH"
 ########################################################
 # create output dir
 if [[ -z $KEYSTRING ]]; then
-OUTDIR="${WD}/exports/${SID}/${SID}_export_${TS}"
+OUTDIR="${DPDIR}/exports/${SID}/${SID}_export_${TS}"
 else
 KEYSTRING=$(echo "$KEYSTRING" | tr ' ' '-' )
-OUTDIR="${WD}/exports/${SID}/${SID}_export_${KEYSTRING}_${TS}"
+OUTDIR="${DPDIR}/exports/${SID}/${SID}_export_${KEYSTRING}_${TS}"
 fi
 mkdir -p "${OUTDIR}"
 ###############################
