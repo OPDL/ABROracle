@@ -47,6 +47,14 @@ if [[ "${1}" = "stop" ]]; then
 fi
 }
 ####################################
+function log
+{
+	D=$(date +%F|tr -d ' ')
+	T=$(date +%H:%M:%S|tr -d ' ')
+H=$(hostname -s)
+printf "%-11s|%-9s|%-15s|%-10s|%s\n" "${D}" "${T}" "${H}" "${1}" "${2}"
+}
+####################################
 # convert seconds to hours, minutes, seconds
 function convertsecs {
     h=$(($1/3600))
@@ -129,7 +137,7 @@ case "${CMD}" in
 "SHOWALL")
 ;;
 *)
-printf "ERROR! Invalid command \"%s\". exiting.\n\n"  "${CMD}"
+log "error " "Invalid command  - ${CMD} "
 usage
 exit 1
 ;;
@@ -154,7 +162,7 @@ SID=$(printf "%s" "${SID}" | sed -e 's/^ *//' -e 's/ *$//')
 
 # save original sid 
 OSID="${SID}"
-printf "Info| Starting RMAN RUN| %s \n" "$(date +'%Y-%m-%d %H:%M:%S')"
+log "info" "Starting RMAN RUN - $(date +'%Y-%m-%d %H:%M:%S')"
 
 VALID=$(validateSID "${SID}")
 
@@ -172,6 +180,7 @@ fi
 # if still not working, then sid must be no good, skip this sid
 if [[ $VALID != 0 ]]; then
 	printf "Unable to configure SID: %s. Skipping\n" "${OSID}"
+	log "error" "Unable to configure SID: ${OSID}. Skipping."
 	continue
 fi
 
@@ -180,7 +189,7 @@ export ORACLE_SID="${SID}";ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
 for CMD in ${CMDLIST}; do
 # clean sid string
 CMD=$(printf "%s" "${CMD}" | sed -e 's/^ *//' -e 's/ *$//')
-printf "Info| Start| %s| %s| %s \n" "${CMD}" "${SID}" "${ORACLE_HOME}"
+log "info" "Start - ${CMD} - ${SID} - ${ORACLE_HOME}"
 
 CMDFILE=""
 case "${CMD}" in
@@ -205,32 +214,37 @@ CMDFILE="${RMAN_DIR}/backup_${SID}.rman"
 if [[ ! -f "${CMDFILE}" ]]; then
 	# use generic script with variable substitutions
 	CMDFILE="${RMAN_DIR}/backup.rman"
-	TS=$(date +%F-%H-%M-%S|tr -d ' ')
-	RMANFILE=/tmp/rman_manager_${TS}.rman
-	########################################################
-	RMANFILETEXT=$(cat ${CMDFILE})
-	# process substitutions
-	RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{SID\}/${SID}/g")
-	RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{TS\}/${TS}/g")
-	echo "${RMANFILETEXT}" > ${RMANFILE}
-	CMDFILE="${RMANFILE}"
 fi
+log "info" "Template file - ${CMDFILE}"
+TS=$(date +%F-%H-%M-%S|tr -d ' ')
+D=$(date +%Y%m%d|tr -d ' ')
+T=$(date +%H%M%S|tr -d ' ')
+RMANFILE=/tmp/rman_manager_${TS}.rman
+########################################################
+RMANFILETEXT=$(cat ${CMDFILE})
+# process substitutions
+RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{SID\}/${SID}/g")
+RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{TS\}/${TS}/g")
+RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{T\}/${T}/g")
+RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{D\}/${D}/g")
+echo "${RMANFILETEXT}" > ${RMANFILE}
+CMDFILE="${RMANFILE}"
 ;;
 *)
-printf "Invalid command %s\n"  "${CMD}"
+log "error " "Invalid command  - ${CMD} - ${SID} "
 exit 1
 ;;
 esac
 
 elapsedTime "start"
-printf "Info| File| %s \n" "${CMDFILE}"
+log "info" "START - ${CMD} - ${SID} - ${CMDFILE}"
 if [[ ! -f "${CMDFILE}" ]]; then
-	printf "RMAN script file %s not found.\n" "${CMDFILE}"
+	log "error " "script file ${CMDFILE} not found  - ${CMD} - ${SID} "
 else
 rman target=/ nocatalog @"${CMDFILE}"
 fi
 ET=$(elapsedTime "stop")
-printf "Info| Complete| %s| %s| %s\n" "${CMD}" "${SID}" "${ET}"
+log "info" "SUCCESS - ${CMD} - ${SID} - ${ET}"
 
 # remove temp rman file if exists
 if [[ -f "${RMANFILE}" ]]; then
