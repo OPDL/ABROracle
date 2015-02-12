@@ -29,13 +29,15 @@ Run oracle dbv on an instance;
 OPTIONS:
    -h      Show this message
    -s      Oracle SID [required]
+   -v      verbose
 EOF
 }
 
 # initialize argument variables
 SID=
+V=
 # options with : after them expect an argument
-while getopts “hs:” OPTION
+while getopts “hvs:” OPTION
 do
      case $OPTION in
          h)
@@ -44,6 +46,9 @@ do
              ;;
          s)
              SID=$OPTARG
+             ;;
+	 v)
+             V=1
              ;;
          ?)
              usage
@@ -64,6 +69,19 @@ function convertsecs {
     s=$(($1%60))
     printf "%06d:%02d:%02d" $h $m $s
 }
+###############################
+function validateSID()
+{
+export ORACLE_SID="${1}";export ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
+which rman 1> /dev/null 2>&1
+echo $?
+}
+###############################
+VALID=$(validateSID "${SID}")
+if [[ $VALID != 0 ]]; then
+echo "Invalid SID ${SID}"
+exit 1
+fi
 ###############################
 # get password for password file
 PWD=
@@ -87,17 +105,12 @@ TS=$(date +%F-%H-%M-%S|tr -d ' ')
 ###############################
 # setup oracle envrionment using oraenv
 export ORACLE_SID=$SID;export ORAENV_ASK=NO;source oraenv 1> /dev/null < /dev/null
-OK=$(echo $ORACLE_BASE | tr -d ' ')
-if [[ -z $OK ]]; then
-echo "Invalid SID ${SID}"
-exit 1
-fi
 ########################################################
 # get list of data files for the SID
 FILELIST=$(sqlplus -S system/${PWD} << EOF
 set heading off
 set feedback off
-select file_name from dba_data_files;
+select file_name from dba_data_files order by file_name asc;
 exit
 EOF
 )
@@ -108,6 +121,13 @@ mkdir -p "${OUTDIR}"
 ###############################
 PARFILE=${OUTDIR}/${SID}_dbv_${TS}.par
 ########################################################
+if [[ $V = 1 ]]; then
+	printf "Datafiles to process: \n"
+	for F in ${FILELIST}; do
+	printf "File: %s\n" "${F}"
+	done
+fi
+
 STARTTIME=$(date +%s)
 CNT=0
 for F in ${FILELIST}; do
@@ -140,6 +160,9 @@ done << EOT
 $(ls -c1r ${OUTDIR}/${SID}_dbv_${TS}_*.log)
 EOT
 
+if [[ $V = 1 ]]; then
+cat "${LOGFILE}"
+fi
 ########################################################
 ENDTIME=$(date +%s)
 ETIMESEC=$[ $ENDTIME - $STARTTIME ]
@@ -151,5 +174,6 @@ echo ${TIMESTR} > ${OUTDIR}/dbv_info_${TS}.txt
 echo "Completed DBV."
 ########################################################
 echo "Output directory:  ${OUTDIR}"
+echo "Logfile:  ${LOGFILE}"
 ########################################################
 exit 0

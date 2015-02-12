@@ -1,8 +1,12 @@
 #!/bin/bash
 # Author: Adam Richards
+# scipt will look through all sids and loop through commands
+# for each sid.
 # set -x
 ####################################
-RMAN_DIR="${HOME}"/local/rman
+RMAN_DIR=/orabacklin/work/DBA/RMAN
+FAIL_DIST="adamrichards@elpasoco.com,shaunoppenheimer@elpasoco.com"
+SUCCESS_DIST="adamrichards@elpasoco.com,shaunoppenheimer@elpasoco.com"
 ####################################
 # get script directory
 SWD=$(dirname ${0})
@@ -21,9 +25,11 @@ the variable RMAN_DIR defines script directory.
 
 OPTIONS:
 -h        help
--c value  command: backup|validate|list|showall|crosscheck|purge[,cmd2,cmd3...cmdN]
+-c value  command: backup|validate|list|summary|showall|crosscheck|purge[,cmd2,cmd3...cmdN]
 -s value  sid1[,sid2,sid3]
 -e 	  use /etc/oratab for sids
+-m        enable mail messages
+-u        email success emails as one message
 -v        verbose
 EOF
 }
@@ -49,10 +55,10 @@ fi
 ####################################
 function log
 {
-	D=$(date +%F|tr -d ' ')
-	T=$(date +%H:%M:%S|tr -d ' ')
-H=$(hostname -s)
-printf "%-11s|%-9s|%-15s|%-10s|%s\n" "${D}" "${T}" "${H}" "${1}" "${2}"
+	D1=$(date +%F|tr -d ' ')
+	T1=$(date +%H:%M:%S|tr -d ' ')
+H1=$(hostname -s)
+printf "%-11s|%-9s|%-15s|%-10s|%s\n" "${D1}" "${T1}" "${H1}" "${1}" "${2}"
 }
 ####################################
 # convert seconds to hours, minutes, seconds
@@ -70,15 +76,26 @@ which rman 1> /dev/null 2>&1
 echo $?
 }
 ####################################
+# add items to path if needed
+# needed if running under cron
+which oraenv 1> /dev/null 2>&1
+OK=$?
+if [[ $OK != 0 ]]; then
+PATH=/usr/local/bin:${PATH}
+fi
+
+####################################
 # initialize argument variables
 SID=
 V=
 E=
+M=
+U=
 CMDLIST=
 ####################################
 # process command line arguments
 # options with : after them expect an argument
-while getopts “hc:s:ve” OPTION
+while getopts “hc:s:vemu” OPTION
 do
      case $OPTION in
 	 h)
@@ -93,6 +110,12 @@ do
 	     ;;
 	 e)
 	     E=1
+	     ;;
+	 m)
+	     M=1
+	     ;;
+	 u)
+	     U=1
 	     ;;
 	 v)
 	     V=1
@@ -126,6 +149,8 @@ CMD=$(printf "%s" "${CMD}" | sed -e 's/^ *//' -e 's/ *$//')
 case "${CMD}" in
 "LIST")
 ;;
+"SUMMARY")
+;;
 "BACKUP")
 ;;
 "VALIDATE")
@@ -145,7 +170,7 @@ esac
 done
 
 if [[ ! -z $E ]]; then
-SIDS=$(cat /etc/oratab | egrep -iv '^#|agent|#\s*ignore' | cut -s -d: -f1 )
+SIDS=$(cat /etc/oratab | egrep -iv '^#|agent|#\s*ignore|+ASM' | cut -s -d: -f1 )
 SIDS=$(echo "${SIDS}" | sort | tr '\r\n' ' ')
 else
 # validate single sid
@@ -155,6 +180,8 @@ fi
 ####################################
 export NLS_DATE_FORMAT='yyyymmdd hh24:mi:ss'
 
+UI=$(date +%Y%m%d%H%M%S.%N)
+UFILE=/tmp/rman_manager__summary_${UI}.rman
 ## Loop through all SIDs
 for SID in ${SIDS}; do
 # clean sid string
@@ -187,6 +214,10 @@ fi
 export ORACLE_SID="${SID}";ORAENV_ASK=NO;. oraenv >/dev/null < /dev/null
 
 for CMD in ${CMDLIST}; do
+UI=$(date +%Y%m%d%H%M%S.%N)
+TS=$(date +%Y%m%d%H%M%S|tr -d ' ')
+D=$(date +%Y%m%d|tr -d ' ')
+T=$(date +%H%M%S|tr -d ' ')
 # clean sid string
 CMD=$(printf "%s" "${CMD}" | sed -e 's/^ *//' -e 's/ *$//')
 log "info" "Start - ${CMD} - ${SID} - ${ORACLE_HOME}"
@@ -195,6 +226,9 @@ CMDFILE=""
 case "${CMD}" in
 "LIST")
 CMDFILE="${RMAN_DIR}/list.rman"
+;;
+"SUMMARY")
+CMDFILE="${RMAN_DIR}/summary.rman"
 ;;
 "CROSSCHECK")
 CMDFILE="${RMAN_DIR}/crosscheck.rman"
@@ -216,10 +250,7 @@ if [[ ! -f "${CMDFILE}" ]]; then
 	CMDFILE="${RMAN_DIR}/backup.rman"
 fi
 log "info" "Template file - ${CMDFILE}"
-TS=$(date +%F-%H-%M-%S|tr -d ' ')
-D=$(date +%Y%m%d|tr -d ' ')
-T=$(date +%H%M%S|tr -d ' ')
-RMANFILE=/tmp/rman_manager_${TS}.rman
+RMANFILE=/tmp/rman_manager_${UI}.rman
 ########################################################
 RMANFILETEXT=$(cat ${CMDFILE})
 # process substitutions
@@ -237,11 +268,36 @@ exit 1
 esac
 
 elapsedTime "start"
-log "info" "START - ${CMD} - ${SID} - ${CMDFILE}"
+log "info" "Command file - ${CMDFILE}"
 if [[ ! -f "${CMDFILE}" ]]; then
 	log "error " "script file ${CMDFILE} not found  - ${CMD} - ${SID} "
 else
-rman target=/ nocatalog @"${CMDFILE}"
+	# Run the rman command
+	LFILE="/tmp/rman_log_${UI}.log"
+	rman target=/ nocatalog @"${CMDFILE}" | tee "${LFILE}"
+	# scan LFILE for errors
+	ERR=$(grep -c -i -e "^RMAN-\|^ORA-" "${LFILE}")
+
+	# if errors send email
+	if [[ ! $ERR = "0" ]]; then
+		if [[ $M = "1" ]]; then
+		LL=$(cat ${LFILE})
+		/bin/mail -s "RMAN ERROR: $(hostname -s) ${SID} ${CMD} ${D} ${T}" "${FAIL_DIST}" << EOT
+${LL}
+EOT
+		fi
+	else
+		if [[ $M = "1" ]] && [[ -z $U ]]; then
+		LL=$(cat ${LFILE})
+		/bin/mail -s "RMAN SUCCESS: $(hostname -s) ${SID} ${CMD} ${D} ${T}" "${SUCCESS_DIST}" << EOT
+${LL}
+EOT
+		else
+			printf "\n%s\n" "RMAN SUCCESS: $(hostname -s) ${SID} ${CMD} ${D} ${T}" >> "${UFILE}"
+			cat ${LFILE} >> "${UFILE}"
+		fi
+	fi
+
 fi
 ET=$(elapsedTime "stop")
 log "info" "SUCCESS - ${CMD} - ${SID} - ${ET}"
@@ -250,9 +306,24 @@ log "info" "SUCCESS - ${CMD} - ${SID} - ${ET}"
 if [[ -f "${RMANFILE}" ]]; then
 	rm "${RMANFILE}"
 fi
+if [[ -f "${LFILE}" ]]; then
+	rm "${LFILE}"
+fi
 done
 
 done
+
+# send success summary 
+if [[ $M = "1" ]] && [[ $U = "1" ]]; then
+  LL=$(cat ${UFILE})
+  /bin/mail -s "RMAN SUCCESS SUMMARY: $(hostname -s) ${D} ${T}" "${SUCCESS_DIST}" << EOT
+${LL}
+EOT
+fi
+
+if [[ -f "${UFILE}" ]]; then
+	rm "${UFILE}"
+fi
 ####################################
 exit 0
 
