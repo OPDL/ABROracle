@@ -14,6 +14,7 @@ BEGIN
   l_ldap_host             := 'mcp.epc.com';
   l_ldap_port             := '389';
   -- l_ldap_user               := 'cn=firstname_lastname,l=amer,dc=oracle,dc=com';
+  -- l_ldap_user   := 'epc\dsvrichards';
   l_ldap_user   := 'dsvrichards@epc.com';
   l_ldap_passwd := '&password';
   l_session     := dbms_ldap.init( l_ldap_host, l_ldap_port );

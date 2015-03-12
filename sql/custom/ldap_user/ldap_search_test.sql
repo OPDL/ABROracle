@@ -17,9 +17,12 @@ DECLARE
   ldap_user   VARCHAR2(256);
   ldap_passwd VARCHAR2(256);
   ldap_base   VARCHAR2(256);
+  objectClass   VARCHAR2(256);
 BEGIN
   retval := -1;
   -- Please customize the following variables as needed
+  -- objectClass := 'organizationalUnit';
+  objectClass := 'group';
   ldap_host  := 'mcp.epc.com' ;
   ldap_port  := '389';
   ldap_user  := 'AppAsrRBD@epc.com';
@@ -39,8 +42,10 @@ BEGIN
   DBMS_OUTPUT.PUT_LINE(RPAD('simple_bind_s Returns ',25,' ') || ': ' || TO_CHAR(retval));
   -- issue the search
   my_attrs(1) := '*'; -- retrieve all attributes
+  my_attrs(1) := 'DN'; -- just get DN
+  -- DBMS_LDAP.SCOPE_ONELEVEL
   -- retval      := DBMS_LDAP.search_s(my_session, ldap_base, DBMS_LDAP.SCOPE_SUBTREE, '(&(samaccountname=*)(objectclass=user))', my_attrs, 0, my_message);
-  retval      := DBMS_LDAP.search_s(my_session, ldap_base, DBMS_LDAP.SCOPE_ONELEVEL, '(objectclass=organizationalunit)', my_attrs, 0, my_message);
+  retval      := DBMS_LDAP.search_s(my_session, ldap_base, DBMS_LDAP.SCOPE_SUBTREE, '(objectclass=' || objectClass || ')', my_attrs, 0, my_message);
   DBMS_OUTPUT.PUT_LINE(RPAD('search_s Returns ',25,' ') || ': ' || TO_CHAR(retval));
   DBMS_OUTPUT.PUT_LINE (RPAD('LDAP message  ',25,' ') || ': ' || RAWTOHEX(SUBSTR(my_message,1,8)) || '(returned from search_s)');
   -- count the number of entries returned
