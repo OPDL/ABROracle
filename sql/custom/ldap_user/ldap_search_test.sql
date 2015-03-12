@@ -27,7 +27,7 @@ BEGIN
   ldap_port  := '389';
   ldap_user  := 'AppAsrRBD@epc.com';
   ldap_passwd:= 'Nxr7WRB3';
-  ldap_base  := 'dc=epc,dc=com';
+  ldap_base  := 'OU=SHR,DC=epc,DC=com';
   -- end of customizable settings
   DBMS_OUTPUT.PUT('DBMS_LDAP Search Example ');
   DBMS_OUTPUT.PUT_LINE('to directory .. ');
