@@ -1,0 +1,10 @@
+#!/bin/bash
+if [[ -z $1 ]]; then
+echo "syntax: ${0} host"
+exit 1
+fi
+
+echo "Check listener logs on host ${1} "
+ssh "${1}" 'find /u01/app/oracle/diag/ 2> /dev/null | egrep -E "listener.log$" '
+echo ""
+ssh "${1}" 'find /u01/app/oracle/diag/ 2> /dev/null | egrep -E "listener.log$" | xargs egrep -in -E "ORA-|TNS-|warn|error"'

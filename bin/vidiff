@@ -1,0 +1,4 @@
+#!/bin/bash
+cat $0
+exit 0
+vi -O file1 file2 -c "windo diffthis"
