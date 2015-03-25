@@ -5,7 +5,7 @@
 
 drop MATERIALIZED view mv_ad_orgunits;
 create MATERIALIZED view mv_ad_orgunits refresh complete start with (sysdate) next (sysdate+60/1440) as
-select * from table(ABRLDAP.GETORGUNITS) order by id;
+select count(*) from table(ABRLDAP.GETORGUNITS) order by id;
 
 
 drop MATERIALIZED view mv_ad_users;
@@ -25,16 +25,16 @@ select id,dn,name from (
 select id,dn ,name, row_number() over (partition by DN order by id) AS rn from table(ABRLDAP.GETGROUPSBYOU)
 ) where rn=1
 );
-select * from mv_ad_groups;
+select count(*) from mv_ad_groups;
 
 
+drop MATERIALIZED view mv_ad_memberof;
+create MATERIALIZED view mv_ad_memberof refresh complete start with (sysdate) next (sysdate+60/1440) as
+select row_number() over ( order by SAM,MEMBEROF) as id,SAM,MEMBEROF from (
+select SERVER, BASE, DN, SAM, MEMBEROF from (
+select SERVER, BASE, DN, SAM, MEMBEROF, row_number() over (partition by SAM,MEMBEROF order by SAM,MEMBEROF) AS rn from table(ABRLDAP.GETUSERMEMBEROFBYOU)
+) where rn=1
+);
+select count(*) from mv_ad_memberof;
 
-EXCEPTION
-WHEN OTHERS THEN
-     dbms_output.put_line('Others :'||SQLERRM);
-     dbms_output.put_line(dbms_utility.Format_Error_Stack || dbms_utility.Format_error_backtrace ||dbms_utility.Format_call_Stack);
-END;
 
-
-(&(objectclass=user)(!(objectclass=computer)))
-ID, SERVER, BASE, DN, EMPLOYEE_ID, FIRST_NAME, LAST_NAME, COMMON_NAME, SAM, EMAIL, PHONE, MANAGER, COMPANY, DEPARTMENT, LOCATION, LAST_ACTIVE, DISABLED

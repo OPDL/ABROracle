@@ -468,5 +468,130 @@ BEGIN
       l_retval := DBMS_LDAP.unbind_s(l_session);
       raise_application_error(-20001,'An error was encountered - '||SQLCODE||' -ERROR- '||SQLERRM|| DBMS_UTILITY.format_error_backtrace);
 END getUsersByOU;
-END abrldap;
 
+FUNCTION getUserMemberOfByOU
+  RETURN m_table PIPELINED
+IS
+  i PLS_INTEGER;
+  attr_index PLS_INTEGER;
+  entry_index PLS_INTEGER;
+  l_dn        VARCHAR2(256);
+  l_attr_name VARCHAR2(256);
+  l_name      VARCHAR2(256);
+  l_base      VARCHAR2(500);
+  l_retval PLS_INTEGER;
+  l_session DBMS_LDAP.session;
+  l_attrs DBMS_LDAP.string_collection;
+  l_message DBMS_LDAP.message;
+  l_entry DBMS_LDAP.message;
+  l_vals DBMS_LDAP.string_collection;
+  p_vals DBMS_LDAP.string_collection;
+  l_ber_element DBMS_LDAP.ber_element;
+  rec m_record;
+  org_unit_rec dn_record;
+  
+  l_filter      VARCHAR2(500);
+  type array_c IS TABLE OF VARCHAR2(1);
+  letter_list array_c:=array_c();
+  
+  type assoc_arr is table of varchar2(4000) index by varchar2(100);
+  value_list assoc_arr;
+BEGIN
+  DBMS_LDAP.USE_EXCEPTION   := TRUE;
+  DBMS_LDAP.UTF8_CONVERSION := FALSE;
+  -- populate list of alphabet chars
+  FOR q IN 1 .. 26
+  LOOP
+    letter_list.extend(1);
+    letter_list(q) := chr(64+q);
+  END LOOP;
+  l_session   := DBMS_LDAP.init(LDAP_HOST,LDAP_PORT);
+  l_retval    := DBMS_LDAP.simple_bind_s(l_session, LDAP_USER, LDAP_USER_PW);
+  
+  l_attrs(0)  := 'samaccountname';
+  l_attrs(1)  := 'memberof';
+  
+  entry_index := 1;
+  FOR org_unit_rec IN
+  ( SELECT * FROM TABLE(getOrgUnits) ORDER BY dn
+  )
+  LOOP
+    l_base := org_unit_rec.dn;
+    FOR z IN letter_list.FIRST .. letter_list.LAST
+    LOOP
+      l_filter :=  '(&(objectclass=user)(!(objectclass=computer))(sn=' || letter_list(z) || '*))';
+      l_message := null;
+    
+      l_retval := DBMS_LDAP.search_s(l_session, l_base, DBMS_LDAP.SCOPE_SUBTREE,l_filter, l_attrs, 0, l_message);
+      l_retval := DBMS_LDAP.count_entries(l_session, l_message);
+      DBMS_OUTPUT.PUT_LINE('NumRecs: ' || l_base || ':' || letter_list(z) || ': ' || ': ' || TO_CHAR(l_retval));
+      -- get the first entry
+      l_entry := DBMS_LDAP.first_entry(l_session, l_message);
+      -- Loop through each of the entries one by one
+      WHILE l_entry IS NOT NULL
+      LOOP
+        value_list.delete();
+        
+        l_dn       := DBMS_LDAP.get_dn(l_session, l_entry);
+        -- DBMS_OUTPUT.PUT_LINE ('dn:' || l_dn);
+        l_name    := NULL;
+        p_vals    := DBMS_LDAP.explode_dn(dn => l_dn, notypes => 1);
+        IF p_vals IS NOT NULL THEN
+          l_name  := p_vals(0);
+        END IF;
+    -- loop through all attr to make sure we get samaccountname first
+      attr_index := 1;
+      l_attr_name       := DBMS_LDAP.first_attribute(l_session,l_entry, l_ber_element);
+      WHILE l_attr_name IS NOT NULL
+      LOOP
+        l_vals         := DBMS_LDAP.get_values (l_session, l_entry, l_attr_name);
+        IF l_vals.COUNT > 0 THEN
+          FOR i IN l_vals.FIRST..l_vals.LAST
+          LOOP
+          -- get just first value fro attr if more than one
+            IF i                       =0 THEN
+              value_list(l_attr_name) := trim(both ' ' FROM l_vals(i));
+            END IF;
+          END LOOP;
+        END IF;
+        l_attr_name := DBMS_LDAP.next_attribute(l_session,l_entry, l_ber_element);
+        attr_index  := attr_index+1;
+      END LOOP;
+      
+      -- loop again and get any member of
+      attr_index := 1;
+      l_attr_name       := DBMS_LDAP.first_attribute(l_session,l_entry, l_ber_element);
+      WHILE l_attr_name IS NOT NULL
+      LOOP
+        l_vals         := DBMS_LDAP.get_values (l_session, l_entry, l_attr_name);
+        IF l_vals.COUNT > 0 THEN
+          FOR i IN l_vals.FIRST..l_vals.LAST
+          LOOP
+            
+            IF upper(l_attr_name) = 'MEMBEROF' THEN
+            SELECT entry_index,LDAP_HOST,l_base,l_dn ,
+              value_list('sAMAccountName') ,
+              trim(both ' ' FROM l_vals(i)) INTO rec FROM DUAL;
+            PIPE ROW(rec);
+            END IF;
+            DBMS_OUTPUT.PUT_LINE(TO_CHAR(attr_index) || ':' || TO_CHAR(i) || ':' || l_attr_name || ' : ' || trim(both ' ' FROM l_vals(i)));
+          END LOOP;
+        END IF;
+        l_attr_name := DBMS_LDAP.next_attribute(l_session,l_entry, l_ber_element);
+        attr_index  := attr_index+1;
+      END LOOP;
+      
+        l_entry := DBMS_LDAP.next_entry(l_session, l_entry);
+        entry_index := entry_index+1;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+  l_retval := DBMS_LDAP.unbind_s(l_session);
+  RETURN;
+  EXCEPTION
+   WHEN OTHERS THEN
+      l_retval := DBMS_LDAP.unbind_s(l_session);
+      raise_application_error(-20001,'An error was encountered - '||SQLCODE||' -ERROR- '||SQLERRM|| DBMS_UTILITY.format_error_backtrace);
+END getUserMemberOfByOU;
+
+END abrldap;
