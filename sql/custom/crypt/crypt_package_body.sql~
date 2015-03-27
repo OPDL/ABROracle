@@ -6,8 +6,6 @@ AS
 --THE WRAP UTILITY IS LOCATED IN THE \BIN DIRECTORY (WRAP.EXE)
 -- grant execute on dbms_crypto to user;
 -- select ABRCRYPT.decrypt('key',ABRCRYPT.encrypt('key','test string')) from dual;
--- select ABRCRYPT.decrypt('key',ABRCRYPT.encrypt('key','This is a test string')) from dual;
--- select ABRCRYPT.encrypt('keykey','This is a test string') as "e" from dual;
   G_CHARACTER_SET VARCHAR2(10) := 'AL32UTF8';
   G_STRING VARCHAR2(32) := '2uWty09T2Bv5hjoJj09PvFfaLikCCVL9';
   G_KEY RAW(250) := utl_i18n.string_to_raw( data => G_STRING,dst_charset => G_CHARACTER_SET );
