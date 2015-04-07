@@ -5,19 +5,19 @@
 
 drop MATERIALIZED view mv_ad_orgunits;
 create MATERIALIZED view mv_ad_orgunits refresh complete start with (sysdate) next (sysdate+60/1440) as
-select count(*) from table(ABRLDAP.GETORGUNITS) order by id;
-
+select * from table(ABRLDAP.GETORGUNITS);
+select count(*) from mv_ad_orgunits;
 
 drop MATERIALIZED view mv_ad_users;
 create MATERIALIZED view mv_ad_users refresh complete start with (sysdate) next (sysdate+60/1440) as
 select row_number() over ( order by dn) as id,SERVER, BASE, DN, EMPLOYEE_ID, FIRST_NAME, LAST_NAME, COMMON_NAME, SAM, EMAIL, PHONE, MANAGER, COMPANY, DEPARTMENT, LOCATION, LAST_ACTIVE, DISABLED from (
 select SERVER, BASE, DN, EMPLOYEE_ID, FIRST_NAME, LAST_NAME, COMMON_NAME, SAM, EMAIL, PHONE, MANAGER, COMPANY, DEPARTMENT, LOCATION, LAST_ACTIVE, DISABLED from (
-select *, row_number() over (partition by DN order by id) AS rn from table(ABRLDAP.GETUSERSBYOU)
+select SERVER, BASE, DN, EMPLOYEE_ID, FIRST_NAME, LAST_NAME, COMMON_NAME, SAM, EMAIL, PHONE, MANAGER, COMPANY, DEPARTMENT, LOCATION, LAST_ACTIVE, DISABLED, row_number() over (partition by DN order by id) AS rn from table(ABRLDAP.GETUSERSBYOU)
 ) where rn=1
 );
 select count(*) from mv_ad_users;
 
-select * from mv_ad_orgunits;
+
 drop MATERIALIZED view mv_ad_groups;
 create MATERIALIZED view mv_ad_groups refresh complete start with (sysdate) next (sysdate+60/1440) as
 select row_number() over ( order by dn) as id,dn,name from (
