@@ -1,0 +1,38 @@
+#!/bin/bash
+# Author: Adam Richards
+# percent used greater than LIMIT
+LIMIT=80
+TS=$(date +%Y%m%d%H%M%S.%N)
+oneshot1=1
+oneshot2=1
+found=0
+TF="/tmp/$(basename $0)_$TS"
+touch "${TF}"
+DATA=$(~/user/bin/orcl_sqlcmd -m ~/safe/HOSTFILE -f ~/user/sql/reports/report_tablespaces.sql) 
+while read -r L; do
+if [[ $L =~ .*HOST.* ]] && [[ $oneshot1 = 1 ]]; then
+	printf "%s\n" "${L}" >> "${TF}"
+	oneshot1=0
+fi
+if [[ $L =~ .*MAX.* ]] && [[ $oneshot2 = 1 ]]; then
+	printf "%s\n" "${L}" >> "${TF}"
+	oneshot2=0
+fi
+N=$(echo "${L}" | cut -d'|' -f 5 | sed "s/\%//g" )
+# trim 
+N=$(echo -e "${N}" | /usr/bin/perl -ne 'chomp;s/^\s+//g;print;')
+N=$(echo -e "${N}" | /usr/bin/perl -ne 'chomp;s/\s+$//g;print;')
+re='^[0-9]+$'
+if [[ $N =~ $re ]] ; then
+if [[ $N -gt $LIMIT ]]; then
+	found=1
+	printf "%s\n" "${L}" >> "${TF}"
+fi
+fi
+done <<< "${DATA}";
+if [[ $found = 1 ]]; then
+	cat "${TF}"
+fi
+if [[ -f "${TF}" ]]; then
+	rm "${TF}"
+fi

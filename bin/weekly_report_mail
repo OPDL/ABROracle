@@ -13,7 +13,8 @@ CL=""
 # SQL files to run list. 
 # format  Title:sqlfile | Title:sqlfile ...
 SL="Jobs Report:report_jobs.sql|\
-RMAN Report:report_rman.sql"
+RMAN Report:report_rman.sql|\
+Tablespaces Near Full Report:report_tablespaces.sql"
 
 ###################################
 SQLDIR=/home/oracle/user/sql/reports
@@ -86,9 +87,10 @@ printBorderWrap end >> "${3}"
 # run some daily type scripts and send as email
 # generate unique timestamp
 TS=$(date +%s)
-FILE=/tmp/mail_file_${TS}.txt
+FILE=/tmp/monitor_mail_file_${TS}_${$}.txt
 ##################################
 printf "Weekly Report Script Run: %s \n" "${DTS}"
+printf "TEMPFILE: %s \n" "${FILE}"
 echo > "${FILE}"
 printHeader >> "${FILE}"
 

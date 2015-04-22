@@ -1,0 +1,117 @@
+#!/bin/bash
+#set -x
+# Author: Adam Richards
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# lists
+HL="oem01 xa01db01 xa02db01 xa0301"
+
+CL=""
+###################################
+# SQL files to run list. 
+# format  Title:sqlfile | Title:sqlfile ...
+SL="Oracle Weekly Login Report:report_login_composite.sql"
+###################################
+SQLDIR=/home/oracle/user/sql/reports
+DTS="$(date +'%D %T')"
+###################################
+# load support files
+source "${SWD}/../config/orcl_config"
+###################################
+# add support script path if needed
+# needed if running under cron
+which orcl_sqlcmd 1> /dev/null 2>&1 
+OK=$?
+if [[ $OK != 0 ]]; then
+PATH=/home/oracle/user/bin:${PATH}
+fi
+###################################
+# functions
+function printDivider
+{
+printf "<hr>\n" 
+}
+
+# tring comparison, use if [ "$s1" == "$s2" ] as answered by others. For the a contains b, use if [[ $s1 == *"$s2"* ]]
+function printBorderWrap
+{
+unset TITLE
+if [[ -z $1 ]]; then
+return
+fi
+if [[ ! -z $2 ]]; then
+TITLE="${2}"
+fi
+# convert parm 1 to upper
+CMD=${1^^}
+# $1 command
+# $2 color
+# $3 header text
+if [ $CMD == "START" ]; then
+	printf "<div style='padding:10px;border:ridge 4px gray'>\n" 
+	if [[ ! -z $TITLE ]]; then
+		printf "<div style='padding:5px;border:none;text-align:center'>%s</div>\n"  "${TITLE}"
+	fi
+fi
+if [ $CMD == "END" ]; then
+	printf "</div> \n" 
+fi
+}
+
+function printFooter
+{
+printf "<div style='padding:4px;font-style:italic;'>Adam Richards</div>\n"
+}
+
+function printHeader
+{
+printf "<div style='padding:4px;border:ridge 4px blue;font-size:20pt;font-weight:bold;text-align:center'>Oracle Weekly Login Report %s %s</div>\n" "${DTS}"
+}
+
+function runSqlBlock
+{
+# $1 File, $2 Title, $3 File
+printBorderWrap start "${2}" >> "${3}"
+SQLF="${SQLDIR}/${1}"
+for H in "${HL}"; do
+orcl_sqlcmd -m "${H}" -f "${SQLF}" 2> /dev/null  >> "${3}"
+done
+printBorderWrap end >> "${3}"
+}
+###################################
+# run some daily type scripts and send as email
+# generate unique timestamp
+TS=$(date +%s)
+FILE=/tmp/monitor_mail_file_${TS}_${$}.txt
+##################################
+printf "Oracle Weekly Login Report Script Run: %s \n" "${DTS}"
+printf "TEMPFILE: %s \n" "${FILE}"
+echo > "${FILE}"
+printHeader >> "${FILE}"
+
+##################################
+# run all sql scripts in SL List
+OIFS=$IFS
+IFS=$'|'
+RECORDS_ARRAY=($(printf "%s" "${SL}"))
+IFS=$OIFS
+for R in "${RECORDS_ARRAY[@]}"; do
+T=
+F=
+T=$(echo "${R}" | cut -d':' -f1)
+F=$(echo "${R}" | cut -d':' -f2)
+runSqlBlock "${F}" "${T}" "${FILE}"
+done 
+##################################
+
+printFooter >> "${FILE}"
+
+##################################
+# replace tabs
+perl -p -i -e 'while(s/\t+/" " x (length($&) * 8 - length($`) % 8)/e) {}' "${FILE}"
+mailfilehtml -a "${ORCL_MONITOR_EMAIL}" -s "Oracle Weekly Login Report: ${DTS}" -f ${FILE} -t
+# cleanup
+rm ${FILE}
+exit 0

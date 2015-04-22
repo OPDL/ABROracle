@@ -1,0 +1,57 @@
+#!/bin/bash
+read -r -d '' BD <<'EOT'
+<DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Title</title>
+<style type="text/css">
+html,body {margin:0;padding:0;height:100%}
+body {height:100%;background:url("cid:bg");}
+</style>
+</head>
+<body>
+ADAM TEST EMAIL
+<div style="text-align:right"><a href="https://oem01.epc.com:7803/em" title="Oracle OEM"><img src="cid:icon" /></a></div>
+</body>
+</html>
+EOT
+{
+        echo "From: oracle@elpasoco.com" 
+        echo "To: oraclenotify@elpasoco.com"
+        # echo "Bcc: adamrichards@elpasoco.com"
+        echo "MIME-Version: 1.0"
+        echo "Subject: image test"
+        echo "Content-Type: multipart/mixed; boundary=\"FILEBOUNDARY\""
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: multipart/alternative; boundary=\"MSGBOUNDARY\""
+        echo
+
+        echo "--MSGBOUNDARY"
+        echo "Content-Type: text/html; charset=iso-8859-1"
+        echo "Content-Disposition: inline"
+	echo "$BD"
+        echo "--MSGBOUNDARY--"
+
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: image/jpeg"
+        echo "Content-Disposition: inline; filename=\"icon.png\""
+        echo "Content-Transfer-Encoding: base64"
+        echo "Content-Id: <icon>"
+        echo
+        base64 ~/scratch/oracle_icon_gear.png
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: image/jpeg"
+        echo "Content-Disposition: inline; filename=\"mbg.png\""
+        echo "Content-Transfer-Encoding: base64"
+        echo "Content-Id: <bg>"
+        echo
+        base64 ~/scratch/mbg.jpg
+        echo
+
+        echo "--FILEBOUNDARY--"
+} | /usr/lib/sendmail -t
+

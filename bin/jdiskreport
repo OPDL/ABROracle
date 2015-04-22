@@ -1,0 +1,3 @@
+#!/bin/bash
+java -jar $HOME/user/bin/jdiskreport.jar  &
+

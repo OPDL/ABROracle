@@ -120,7 +120,7 @@ else
 			if [[ $V -eq 1 ]]; then
 				printCSTR "${4}"
 			fi
-			printf "%10d | msec | %s\n" "${VAL}" "${2}"
+			printf "%s | %s | %10d | msec | %s\n" "$(date +%a)" "$(date +%Y-%m-%d.%H:%M:%S)" "${VAL}" "${2}" 
 			orcl_traceroute "${3}"
 		fi
 	done
@@ -223,4 +223,5 @@ else
 fi
 done
 done
+rm "${RESULTFILE}"
 exit 0

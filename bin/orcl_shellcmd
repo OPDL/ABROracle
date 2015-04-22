@@ -94,7 +94,7 @@ fi
 
 for HOST in ${HOSTLIST}; do
 echo "HOST: $HOST"
-ssh -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${HOST}"  < "${CMDFILE}"
+ssh -T -q -i "${ORCL_SSHIDFILE}" -t "${ORCL_SSHUSER}"@"${HOST}"  < "${CMDFILE}"
 echo ""
 done
 exit 0

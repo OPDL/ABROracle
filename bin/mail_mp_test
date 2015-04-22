@@ -1,0 +1,45 @@
+#!/bin/bash
+{
+        echo "From: user@domain.com"
+        echo "To: adamrichards@elpasoco.com"
+        echo "MIME-Version: 1.0"
+        echo "Subject: image test"
+        echo "Content-Type: multipart/mixed; boundary=\"FILEBOUNDARY\""
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: multipart/alternative; boundary=\"MSGBOUNDARY\""
+        echo
+
+        echo "--MSGBOUNDARY"
+        echo "Content-Type: text/html; charset=iso-8859-1"
+        echo "Content-Disposition: inline"
+        echo "<html><body>"
+        echo "<font face=verdana size=2>Tick mark:- </font>"
+        echo "<img src=\"cid:tickjpeg\" /><br>"
+        echo "<font face=verdana size=2>Cross mark:- </font>"
+        echo "<img src=\"cid:crossjpeg\" /><br>"
+        echo "</body></html>"
+        echo "--MSGBOUNDARY--"
+
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: image/jpeg"
+        echo "Content-Disposition: inline; filename=\"tick.jpg\""
+        echo "Content-Transfer-Encoding: base64"
+        echo "Content-Id: <tickjpeg>"
+        echo
+        base64 ~/scratch/img1.jpg
+        echo
+
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: image/jpeg"
+        echo "Content-Disposition: inline; filename=\"cross.jpg\""
+        echo "Content-Transfer-Encoding: base64"
+        echo "Content-Id: <crossjpeg>"
+        echo
+        base64 ~/scratch/img2.jpg
+        echo
+
+        echo "--FILEBOUNDARY--"
+} | /usr/lib/sendmail -t
+

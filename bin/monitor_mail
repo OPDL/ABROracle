@@ -13,8 +13,9 @@ CL=""
 # SQL files to run list. 
 # format  Title:sqlfile | Title:sqlfile ...
 SL="Jobs Report:monitor_jobs.sql|\
-RMAN Report:monitor_rman.sql|\
-Tablespaces Near Full Report:monitor_tablespaces.sql"
+RMAN Report:monitor_rman.sql"
+# just one report
+SL="RMAN Report:monitor_rman.sql"
 
 ###################################
 SQLDIR=/home/oracle/user/sql/monitor
@@ -87,18 +88,21 @@ printBorderWrap end >> "${3}"
 # run some daily type scripts and send as email
 # generate unique timestamp
 TS=$(date +%s)
-FILE=/tmp/mail_file_${TS}.txt
+FILE=/tmp/monitor_mail_file_${TS}_${$}.txt
 ##################################
 printf "Monitor Script Run: %s \n" "${DTS}"
+printf "TEMPFILE: %s \n" "${FILE}"
 echo > "${FILE}"
 printHeader >> "${FILE}"
 
-printBorderWrap start "Disk Usage Report" >> "${FILE}"
-orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/disk_report.cmd >> "${FILE}"
+printBorderWrap start "Load Report" >> "${FILE}"
+orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/load.cmd  >> "${FILE}"
 printBorderWrap end >> "${FILE}"
-
 printBorderWrap start "Memory Usage Report" >> "${FILE}"
 orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/os_memfree.cmd  >> "${FILE}"
+printBorderWrap end >> "${FILE}"
+printBorderWrap start "Disk Report" >> "${FILE}"
+orcl_shellcmd -m /home/oracle/safe/HOSTFILE -f /home/oracle/user/cmd/df.cmd  >> "${FILE}"
 printBorderWrap end >> "${FILE}"
 
 ##################################
