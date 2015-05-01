@@ -126,6 +126,7 @@ CAST(SYS_CONTEXT('USERENV','SERVICE_NAME') as VARCHAR2(20)) as "SERVICE_NAME",
 CAST(SYS_CONTEXT('USERENV','DB_NAME') as VARCHAR2(10)) as "DBNAME",
 CAST(instance_name as VARCHAR(10)) as "INSTANCE" 
 from v$instance;
+exit;
 EOT
 ####################################
 function printCSTR {
