@@ -1,3 +1,5 @@
+alter session set current_schema=DEV_APEX;
+/
 create or replace PACKAGE BODY abrcrypt
 AS
 -- Author: Adam Richards
@@ -78,3 +80,7 @@ AS
     return 'PASS';
   END test;
 END abrcrypt;
+/
+show errors
+commit;
+
