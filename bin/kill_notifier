@@ -1,0 +1,2 @@
+#!/bin/bash
+ps -eopid,uid,cmd | grep gdu-notificatio[n] | awk '{print $1}' | xargs kill 2> /dev/null

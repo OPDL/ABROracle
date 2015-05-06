@@ -1,5 +1,5 @@
 set linesize 300
-set pagesize 500
+set pagesize 9999
 set colsep '|'
 col inst_id format 9 
 col inst_id HEADING 'INST|ID'

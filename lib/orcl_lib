@@ -21,8 +21,12 @@ echo ${HOSTLIST}
 }
 ####################################
 function fileExists {
-file "$1" > /dev/null 2>&1
-echo $?
+# return 0 if found
+if [[  -f "${1}" ]]; then
+echo 0
+else
+echo 1
+fi
 }
 ####################################
 function assertIdentityFile {

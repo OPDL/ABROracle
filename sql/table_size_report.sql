@@ -1,6 +1,6 @@
 -- Adam Richards
-set pagesize 9999
-set linesize 9999
+set pagesize 999
+set linesize 999
 col table_size_in_mb format 99999999.99
 set colsep '|'
 

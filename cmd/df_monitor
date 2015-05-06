@@ -1,0 +1,16 @@
+#!/bin/bash
+# Author: Adam Richards
+# percent used greater than LIMIT
+LIMIT=80
+DATA=$(df -Ph | perl -ne 'chomp; printf "%-50s|%8s|%8s|%8s|%8s|%-20s\n", split / +/, $_, 6 ; ')
+while read -r L; do
+if [[ $L =~ .*Filesystem.* ]]
+then
+	printf "%s\n" "${L}"
+else
+N=$(echo "${L}" | cut -d'|' -f 5 | sed "s/\%//g" )
+if [[ $N -gt $LIMIT ]]; then
+	printf "%s\n" "${L}"
+fi
+fi
+done <<< "${DATA}";

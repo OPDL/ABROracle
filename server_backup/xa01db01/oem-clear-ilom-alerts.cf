@@ -1,0 +1,32 @@
+# Add entries one hostname and file per line, comma separated.
+# A separate line is required for each file on each hostname.
+#<hostname>,<path to selstate file>
+
+# Examples:
+#foo,/some/path/file1
+#foo,/some/path/file2
+#bar,/another/path/fileA
+#bar,/another/path/fileB
+
+#vrtldvsys01,/var/tmp/demo/foo38
+#vrtldvsys01,/var/tmp/demo/foo39
+#vrtldvsys01,/var/tmp/demo/10.10.12.38-selstate.txt
+#vrtldvsys01,/var/tmp/demo/10.10.12.39-selstate.txt
+#vrtldvsys01,/var/tmp/demo/bar01
+
+xa01db01,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.21-selstate.txt
+xa01db01,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.22-selstate.txt
+xa01db02,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.21-selstate.txt
+xa01db02,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.22-selstate.txt
+
+#xa02db01,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.7.12.21-selstate.txt
+#xa02db01,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.7.12.22-selstate.txt
+#xa02db02,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.7.12.21-selstate.txt
+#xa02db02,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.7.12.22-selstate.txt
+
+#xa0301,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.38-selstate.txt
+#xa0301,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.39-selstate.txt
+#xa0302,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.38-selstate.txt
+#xa0302,/u01/app/12cagent/agent_inst/sysman/emd/state/ilom/10.10.12.39-selstate.txt
+
+

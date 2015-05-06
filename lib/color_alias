@@ -1,0 +1,24 @@
+# use echo -e  "${ansi_red}RED{$ansi_reset}"
+# printf "%bRED%b" "${ansi_red}" "${ansi_reset}"
+# white background
+ansi_black='\E[30;47m'
+ansi_red='\e[31;47m'
+ansi_green='\E[32;47m'
+ansi_yellow='\E[33;47m'
+ansi_blue='\E[34;47m'
+ansi_magenta='\E[35;47m'
+ansi_cyan='\E[36;47m'
+ansi_white='\E[37;47m'
+ansi_reset='\e[0m'
+# clear background
+txtblk='\e[0;30m' # Black - Regular
+txtred='\e[0;31m' # Red
+txtgrn='\e[0;32m' # Green
+txtylw='\e[0;33m' # Yellow
+txtblu='\e[0;34m' # Blue
+txtpur='\e[0;35m' # Purple
+txtcyn='\e[0;36m' # Cyan
+txtwht='\e[0;37m' # White
+txtbldblk='\e[1;30m' # Black - Bold
+txtbldred='\e[1;31m' # Red
+#

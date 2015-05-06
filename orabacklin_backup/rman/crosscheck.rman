@@ -1,0 +1,8 @@
+set echo on
+run {
+crosscheck backup;
+crosscheck archivelog all;
+}
+exit;
+
+

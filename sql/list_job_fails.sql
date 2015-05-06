@@ -1,4 +1,3 @@
--- last N days
 set pagesize 9999
 set linesize 9999
 set feedback off
@@ -17,7 +16,7 @@ CAST(SYS_CONTEXT('USERENV','SERVER_HOST') as VARCHAR2(15)) as "HOST"
 ,status 
 from 
 dba_scheduler_job_run_details
-where log_date > sysdate - 30
+where log_date > sysdate - 14
 and status <> 'SUCCEEDED'
-order by log_date desc
-;
+order by log_date desc;
+

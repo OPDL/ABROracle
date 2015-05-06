@@ -1,0 +1,34 @@
+Oracle Point in Time Recovery (PITR)
+run{
+set until time "to_date('08/28/07 15:00:00' , 'mm/dd/yy hh24:mi:ss')";
+restore database;
+recover database;
+alter database open resetlogs;}
+
+Mount the instance
+
+set the environment
+. oraenv
+> rman TARGET /  NOCATALOG
+
+RMAN:> shutdown immediate;
+RMAN:> startup mount;
+
+Restore and recover the datafiles
+
+RMAN> run
+{
+allocate channel dev1 type disk;
+set until time "to_date('2011-12-30:00:00:00', 'yyyy-mm-dd:hh24:mi:ss')";
+restore database;
+recover database; }
+
+For a large database it can take a long time to restore each tablespace - for better performance during a restore place the RMAN backup files on a separate disk to the Oracle datafiles to reduce disk contention.
+
+Open the database and reset logs
+
+RMAN> alter database open resetlogs;
+
+This will update all current datafiles and online redo logs and all subsequent archived redo logs with a new RESETLOGS SCN and time stamp.
+
+As soon as you have done a resetlogs run a full backup, this is important as should you suffer a second failure you will not be able to perform a second recovery because after resetting the logs the SCN numbers will no longer match any older backup files.

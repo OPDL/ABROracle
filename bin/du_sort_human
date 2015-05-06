@@ -1,2 +1,6 @@
 #!/bin/bash
+if [[ -z $1 ]]; then
 du -x | sort -nr | cut -f2- | xargs du -hs
+else
+du -x "${1}"| sort -nr | cut -f2- | xargs du -hs
+fi

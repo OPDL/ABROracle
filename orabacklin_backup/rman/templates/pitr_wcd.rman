@@ -1,0 +1,12 @@
+# Point in time recovery tempalate for wcd
+# shutdown and bring database up to mount
+# shutdown db  (both instances) 
+# startup mount  (only one instance )
+
+run {
+set until time "TO_DATE('2014-05-05 06:00:00','yyyy-mm-dd hh24:mi:ss')";
+restore database;
+recover database;
+alter database open resetlogs;
+}
+
