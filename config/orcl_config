@@ -1,8 +1,8 @@
 # env variable config for orcl script files
-ORCL_SSHIDFILE="$HOME/safe/identity/id_rsa_epc_oracle"
+ORCL_SSHIDFILE="$HOME/safe/epc/identity/id_rsa_epc_oracle"
 ORCL_SSHUSER="oracle"
-ORCL_HOSTFILE="$HOME/safe/HOSTFILE"
-ORCL_LISTENERFILE="$HOME/safe/LISTENERFILE"
+ORCL_HOSTFILE="$HOME/safe/epc/HOSTFILE"
+ORCL_LISTENERFILE="$HOME/safe/epc/LISTENERFILE"
 # comma delimited email list
-ORCL_MONITOR_EMAIL="adamrichards@elpasoco.com,shaunoppenheimer@elpasoco.com"
+ORCL_MONITOR_EMAIL="adamrichards@elpasoco.com"
 #ORCL_MONITOR_EMAIL="adamrichards@elpasoco.com"
