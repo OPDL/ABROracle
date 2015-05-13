@@ -169,6 +169,7 @@ ETIMESTR=$(convertsecs ${ETIMESEC})
 TIMESTR="Export Elapsed Time HH:MM:SS ${ETIMESTR}  Total Seconds: ${ETIMESEC}"
 echo ${TIMESTR}
 echo ${TIMESTR} > ${OUTDIR}/export_info_${TS}.txt
+mv ${DIRPATH}/*${TS}*.log ${OUTDIR}
 ########################################################
 echo "Completed export data pump."
 ########################################################
@@ -255,6 +256,9 @@ if [[ $STAGE = 0 ]]; then
 	echo ${TIMESTR} >> ${OUTDIR}/export_info_${TS}.txt
 fi
 ########################################################
-echo "Output directory:  ${OUTDIR}"
+IFILE=${OUTDIR}/export_info_${TS}.txt
+FP=$(readlink -f "${IFILE}")
+FD=$(dirname "${FP}")
+echo "Output directory:  ${FD}"
 ########################################################
 exit 0

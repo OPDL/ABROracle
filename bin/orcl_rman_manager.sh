@@ -1,12 +1,18 @@
 #!/bin/bash
 # Author: Adam Richards
-# scipt will look through all sids and loop through commands
+# scipt will loop through all sids and loop through commands
 # for each sid.
 # set -x
 ####################################
 RMAN_DIR=/orabacklin/work/DBA/RMAN
-FAIL_DIST="adamrichards@elpasoco.com,shaunoppenheimer@elpasoco.com"
-SUCCESS_DIST="adamrichards@elpasoco.com,shaunoppenheimer@elpasoco.com"
+# comma delimited list of email addresses
+FAIL_DIST="oraclenotify@elpasoco.com"
+SUCCESS_DIST="oraclenotify@elpasoco.com"
+# send rich mail
+RM=1
+# mail program
+MP=/usr/sbin/sendmail
+IB=/orabacklin/work/DBA/images/
 ####################################
 # get script directory
 SWD=$(dirname ${0})
@@ -25,11 +31,11 @@ the variable RMAN_DIR defines script directory.
 
 OPTIONS:
 -h        help
--c value  command: backup|validate|list|summary|showall|crosscheck|purge[,cmd2,cmd3...cmdN]
+-c value  command: backup|validate|list|summary|showall|archive_only|crosscheck|purge[,cmd2,cmd3...cmdN]
 -s value  sid1[,sid2,sid3]
 -e 	  use /etc/oratab for sids
 -m        enable mail messages
--u        email success emails as one message
+-u        email success emails as one summary message
 -v        verbose
 EOF
 }
@@ -159,6 +165,8 @@ case "${CMD}" in
 ;;
 "CROSSCHECK")
 ;;
+"ARCHIVE_ONLY")
+;;
 "SHOWALL")
 ;;
 *)
@@ -182,6 +190,8 @@ export NLS_DATE_FORMAT='yyyymmdd hh24:mi:ss'
 
 UI=$(date +%Y%m%d%H%M%S.%N)
 UFILE=/tmp/rman_manager__summary_${UI}.rman
+RFILE=/tmp/rman_manager__rollup_${UI}.rman
+printf "BEGIN ROLLUP SUMMARY\n" >> "${RFILE}"
 ## Loop through all SIDs
 for SID in ${SIDS}; do
 # clean sid string
@@ -242,6 +252,9 @@ CMDFILE="${RMAN_DIR}/purge.rman"
 "VALIDATE")
 CMDFILE="${RMAN_DIR}/validate.rman"
 ;;
+"ARCHIVE_ONLY")
+CMDFILE="${RMAN_DIR}/archive_only.rman"
+;;
 "BACKUP")
 # check if specific backup script exists for this sid
 CMDFILE="${RMAN_DIR}/backup_${SID}.rman"
@@ -250,6 +263,13 @@ if [[ ! -f "${CMDFILE}" ]]; then
 	CMDFILE="${RMAN_DIR}/backup.rman"
 fi
 log "info" "Template file - ${CMDFILE}"
+;;
+*)
+log "error " "Invalid command  - ${CMD} - ${SID} "
+exit 1
+;;
+esac
+
 RMANFILE=/tmp/rman_manager_${UI}.rman
 ########################################################
 RMANFILETEXT=$(cat ${CMDFILE})
@@ -260,47 +280,49 @@ RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{T\}/${T}/g")
 RMANFILETEXT=$(echo "${RMANFILETEXT}" | perl -pi -e "s/\\$\{D\}/${D}/g")
 echo "${RMANFILETEXT}" > ${RMANFILE}
 CMDFILE="${RMANFILE}"
-;;
-*)
-log "error " "Invalid command  - ${CMD} - ${SID} "
-exit 1
-;;
-esac
 
-elapsedTime "start"
+ET="--"
 log "info" "Command file - ${CMDFILE}"
 if [[ ! -f "${CMDFILE}" ]]; then
 	log "error " "script file ${CMDFILE} not found  - ${CMD} - ${SID} "
 else
 	# Run the rman command
 	LFILE="/tmp/rman_log_${UI}.log"
+elapsedTime "start"
 	rman target=/ nocatalog @"${CMDFILE}" | tee "${LFILE}"
 	# scan LFILE for errors
 	ERR=$(grep -c -i -e "^RMAN-\|^ORA-" "${LFILE}")
+ET=$(elapsedTime "stop")
+S="$(hostname -s) ${SID} ${CMD} Time: ${ET}"
 
-	# if errors send email
+	# send email
 	if [[ ! $ERR = "0" ]]; then
+	log "info" "ERROR - ${S}"
 		if [[ $M = "1" ]]; then
 		LL=$(cat ${LFILE})
 		/bin/mail -s "RMAN ERROR: $(hostname -s) ${SID} ${CMD} ${D} ${T}" "${FAIL_DIST}" << EOT
+ERROR - ${S}
 ${LL}
 EOT
 		fi
 	else
+	log "info" "SUCCESS - ${S}"
 		if [[ $M = "1" ]] && [[ -z $U ]]; then
 		LL=$(cat ${LFILE})
 		/bin/mail -s "RMAN SUCCESS: $(hostname -s) ${SID} ${CMD} ${D} ${T}" "${SUCCESS_DIST}" << EOT
+SUCCESS - ${S}
 ${LL}
 EOT
 		else
-			printf "\n%s\n" "RMAN SUCCESS: $(hostname -s) ${SID} ${CMD} ${D} ${T}" >> "${UFILE}"
+		printf "\n%s %+12s %+12s %+12s %+10s\n" "RMAN SUCCESS: " "$(hostname -s)" "${SID}" "${CMD}" "${D} ${T}" >> "${UFILE}"
+		printf "%s %+12s %+12s %+12s %+10s\n" "SUCCESS: " "$(hostname -s)" "${SID}" "${CMD}" "${ET}" >> "${RFILE}"
 			cat ${LFILE} >> "${UFILE}"
 		fi
 	fi
 
 fi
-ET=$(elapsedTime "stop")
-log "info" "SUCCESS - ${CMD} - ${SID} - ${ET}"
+
+log "info" "FINISHED - $(hostname -s) - ${CMD} - ${SID}"
 
 # remove temp rman file if exists
 if [[ -f "${RMANFILE}" ]]; then
@@ -314,11 +336,110 @@ done
 done
 
 # send success summary 
-if [[ $M = "1" ]] && [[ $U = "1" ]]; then
+if [[ $M = "1" ]] && [[ $U = "1" ]] && [[ $RM = "0" ]]; then
+printf "END  ROLLUP SUMMARY\n"  >> "${RFILE}"
   LL=$(cat ${UFILE})
-  /bin/mail -s "RMAN SUCCESS SUMMARY: $(hostname -s) ${D} ${T}" "${SUCCESS_DIST}" << EOT
+  RL=$(cat ${RFILE})
+  /bin/mail  -s "RMAN SUCCESS SUMMARY: $(hostname -s) ${D} ${T}" "${SUCCESS_DIST}" << EOT
+${RL}
 ${LL}
 EOT
+fi
+
+if [[ $M = "1" ]] && [[ $U = "1" ]] && [[ $RM = "1" ]]; then
+printf "END  ROLLUP SUMMARY\n"  >> "${RFILE}"
+  LL=$(cat ${UFILE})
+  RL=$(cat ${RFILE})
+
+
+read -r -d '' MAIL_TEMPLATE <<'EOT'
+<DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Title</title>
+<style type="text/css">
+html,body {margin:0;padding:0;height:100%}
+body {height:100%}
+</style>
+</head>
+<body>
+<div style="text-align:right">
+<a href="http://vrtldvdb01.epc.com/databasewiki/index.php/Oracle" title="EPC wiki"><img width=64 src="cid:epcicon" /></a>
+<a href="https://oem01.epc.com:7803/em" title="EPC Oracle OEM"><img width=64 src="cid:orclicon" /></a>
+</div>
+<div>
+<pre>
+${__TEXT}
+</pre>
+</div>
+<div style="margin-top:50px;text-align:center;font-style: italic;font-weight:900">
+See attachments for additional information
+</div>
+<div style="text-align:right;font-style:italic;">
+Adam Richards
+</div>
+</body>
+</html>
+EOT
+
+# substitue in data for __TEXT placeholder
+MAIL_TEMPLATE=$(echo "${MAIL_TEMPLATE}" | perl -pi -e "s/\\$\{__TEXT\}/${RL}/g")
+
+{
+        echo "From: oracle@elpasoco.com" 
+        echo "To:${SUCCESS_DIST}"
+        # echo "Bcc: adamrichards@elpasoco.com"
+        echo "MIME-Version: 1.0"
+        echo "Subject: RMAN SUCCESS SUMMARY: $(hostname -s) ${D} ${T}"
+        echo "Content-Type: multipart/mixed; boundary=\"FILEBOUNDARY\""
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: multipart/alternative; boundary=\"MSGBOUNDARY\""
+        echo
+
+        echo "--MSGBOUNDARY"
+        echo "Content-Type: text/html; charset=iso-8859-1"
+        echo "Content-Disposition: inline"
+	echo "$MAIL_TEMPLATE"
+        echo "--MSGBOUNDARY--"
+
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: text/plain"
+        echo "Content-Disposition: attachment; filename=\"rman_log.txt\""
+        echo "Content-Transfer-Encoding: base64"
+        echo "Content-Id: <rmanlog>"
+        echo
+	# convert to dos format and base64 encode attachment
+        cat "${UFILE}" | perl -pi -e 's/\n/\r\n/g'|base64
+        echo
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: image/jpeg"
+        echo "Content-Disposition: attachment; filename=\"orclicon.jpg\""
+        echo "Content-Transfer-Encoding: base64"
+        echo "Content-Id: <orclicon>"
+        echo
+	# convert to dos format and base64 encode attachment
+        base64 "${IB}/oracle_icon_gear.png"
+        echo
+
+        echo "--FILEBOUNDARY"
+        echo "Content-Type: image/jpeg"
+        echo "Content-Disposition: attachment; filename=\"epcicon.jpg\""
+        echo "Content-Transfer-Encoding: base64"
+        echo "Content-Id: <epcicon>"
+        echo
+	# convert to dos format and base64 encode attachment
+        base64 "${IB}/epc_favicon64.png"
+        echo
+
+        echo "--FILEBOUNDARY--"
+} | "${MP}" -t
+fi
+
+if [[ -f "${RFILE}" ]]; then
+	rm "${RFILE}"
 fi
 
 if [[ -f "${UFILE}" ]]; then
