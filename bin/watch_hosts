@@ -1,0 +1,327 @@
+#!/bin/bash
+####################################
+# Author: Adam Richards
+# This program will perform ping and bind to port tests.  
+# A lock file is used keyed from the user id.  
+# There can be only one running process per user id.
+# A kill or ctl C will be trapped and the lock file will be removed.
+# WARNING: A kill -9 will bypass the trap and the lock file will be left intact.
+#          an existing lock file will prevent the program from starting again.
+#          you will have to clear the lock file manually.
+####################################
+# get script directory
+SWD=$(dirname ${0})
+###################################
+# define usage function
+usage()
+{
+cat << EOF
+usage: $0 options
+Author: Adam Richards
+Monitor hosts and ports
+
+OPTIONS:
+-h      help
+-m      hostfile|[host[:port],....]
+-w N	watch. loop. sleep N seconds
+-a      alert. Send email on failures
+-v      verbose
+EOF
+}
+
+####################################
+LISTFILE=
+WATCH_SEC=5
+V=0
+W=0
+A=0
+####################################
+# process command line arguments
+# options with : after them expect an argument
+while getopts “hw:m:va” OPTION
+do
+     case $OPTION in
+	 h)
+	     usage
+	     exit 1
+	     ;;
+	 m)
+	     LISTFILE=$OPTARG
+	     ;;
+	 v)
+	     V=1
+	     ;;
+	 a)
+	     A=1
+	     ;;
+	 w)
+	     WATCH_SEC=$OPTARG
+	     W=1
+	     ;;
+	 ?)
+	     usage
+	     exit
+	     ;;
+     esac
+done
+####################################
+# validate arguments
+if [[ -z $LISTFILE ]] 
+then
+     usage
+     exit 1
+fi
+
+if [[ ! -f "${LISTFILE}" ]]; then
+    print "File not found: %s\n" "${LISTFILE}"
+    exit 1
+fi
+####################################
+# generate unique timestamp
+TS=$(date +%s)
+UN=$(id -un)
+####################################
+function datetime {
+	local D=$(date +%F|tr -d ' ')
+	local T=$(date +%H:%M:%S|tr -d ' ')
+	printf "%-11s %-9s" "${D}" "${T}"
+}
+
+function log {
+	local D=$(date +%F|tr -d ' ')
+	local T=$(date +%H:%M:%S|tr -d ' ')
+	local H=$(hostname -s)
+	if [[ $V -eq 1 ]]; then
+		printf "%-11s|%-9s|%-15s|%-10s|%s\n" "${D}" "${T}" "${H}" "${1}" "${2}"
+	fi
+}
+
+function ping_test {
+
+	local HOST="${1}"
+	local R=$(ping -W 2 -c 1 -q "${HOST}")
+	local OK=$?
+	if [[ $OK -ne 0 ]];then
+		RV="dt:$(datetime),pass:0,cmd:ping_test,host:$HOST,returned:$OK"
+		log "ERROR" "${RV}"
+	else
+		local D=$(echo "$R"  | grep rtt)
+		RV="dt:$(datetime),pass:1,cmd:ping_test,host:$HOST,returned:$OK"
+		log "INFO" "${RV}"
+	fi
+	TEST_OUTPUT="${RV}"
+}
+
+function port_test {
+	local RV=""
+	local HOST="${1}"
+	local PORT=${2}
+	curl --max-time 2 --connect-timeout 2 http://${HOST}:${PORT}/ 2> /dev/null 1> /dev/null
+	local OK=$?
+	# we expect 52 for success to an non http port
+	# we expect 0 for success to an http port
+	if [[ $OK -eq 52 ]] || [[ $OK -eq 0 ]]; then
+		RV="dt:$(datetime),pass:1,cmd:port_test,host:$HOST,port:$PORT,returned:$OK"
+		log "INFO" "${RV}"
+	else
+		RV="dt:$(datetime),pass:0,cmd:port_test,host:$HOST,port:$PORT,returned:$OK"
+		log "ERROR" "${RV}"
+	fi
+	TEST_OUTPUT="${RV}"
+}
+function compare_files {
+# $1 is current file
+# $2 is previous file
+
+	if [[ -z $1 ]]; then
+		return
+	fi
+	# if $2 is empty, then no previous file yet, just check for failures and prepare email text
+	MSG_TEXT=
+	if [[ -z $2 ]]; then
+		while read cl; do
+			# echo "f $cl"
+			P=$(echo $cl | cut -d ',' -f2 | cut -d ':' -f2)
+			if [[ $P -eq 0 ]]; then
+				printf -v MSG_TEXT "${MSG_TEXT}%s" "${cl}"
+			fi
+		done < "${1}"
+	else
+		# read from two files line by line
+		while read cl <&3 && read pl <&4; do     
+			#echo "c $cl"
+			#echo "P $pl"
+			P1=$(echo $cl | cut -d ',' -f2 | cut -d ':' -f2)
+			P2=$(echo $pl | cut -d ',' -f2 | cut -d ':' -f2)
+			if [[ $P1 -ne $P2 ]]; then
+				printf -v MSG_TEXT "${MSG_TEXT}%s" "${cl}"
+			fi
+		done 3< "${1}" 4< "${2}"
+	fi
+}
+
+function sendmail()
+{
+# printf -v EMAIL_TEXT "${EMAIL_TEXT}Finished: %s \n" "$(date +'%Y-%m-%d %H:%M:%S')"
+#DIST="oraclenotify@elpasoco.com"
+DIST="adamrichards@elpasoco.com,erinramsay@elpasoco.com"
+MS="EPC Server Watch Alert. "
+MP=/usr/sbin/sendmail
+
+D=$(date +%Y%m%d|tr -d ' ')
+T=$(date +%H%M%S|tr -d ' ')
+
+
+read -r -d '' MAIL_TEMPLATE <<'EOT'
+<DOCTYPE HTML PUBLIC \\"-//W3C//DTD HTML 4.01 Transitional//EN\\" \\"http://www.w3.org/TR/html4/loose.dtd\\">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Title</title>
+<style type="text/css">
+html,body {margin:0;padding:0;height:100%}
+body {height:100%}
+</style>
+</head>
+<body>
+<div>
+<pre>
+${__TEXT}
+</pre>
+</div>
+<div style="margin-top:50px;text-align:center;font-style: italic;font-weight:900">
+EPC Oracle Services
+</div>
+<div style="text-align:right;font-style:italic;">
+Adam Richards
+</div>
+</body>
+</html>
+EOT
+
+# substitue in data for __TEXT placeholder
+# \Q and \E for escaping meta data
+MAIL_TEMPLATE=$(echo "${MAIL_TEMPLATE}" | perl -pi -e "s|\\$\{__TEXT\}|${EMAIL_TEXT}|g")
+read -r -d '' MSG << EOT
+From: oracle@elpasoco.com
+To:${DIST}
+MIME-Version: 1.0
+Subject: ${MS} ${D} ${T}
+Content-Type: multipart/mixed; boundary="FILEBOUNDARY"
+
+--FILEBOUNDARY
+Content-Type: multipart/alternative; boundary="MSGBOUNDARY"
+
+--MSGBOUNDARY
+Content-Type: text/html; charset=iso-8859-1
+Content-Disposition: inline
+$MAIL_TEMPLATE
+
+--MSGBOUNDARY--
+--FILEBOUNDARY--
+EOT
+# Mail it
+{
+echo "${MSG}"       
+} | "${MP}" -t
+}
+####################################
+# ping_test "itssql"
+# port_test "itssql" 1433
+####################################
+LOCKFILE="/tmp/watch_hosts.${UN}.lock"
+if [[ ! -f $LOCKFILE ]]; then
+    touch $LOCKFILE
+    OK=$?
+	if [[ $OK -ne 0 ]]; then
+	    printf "Failed to aquire lock file $LOCKFILE\n" >&2
+	    exit 1
+	fi
+else
+	printf "lockfile $LOCKFILE already exists! exiting.\n" >&2
+	exit 1
+fi
+# exit trap
+function on_exit()
+{
+rm "${LOCKFILE}"
+rm "${SFILE}"*
+}
+# trap 'rm $LOCKFILE' EXIT  # trap and remove lockfile
+trap on_exit EXIT  # trap and remove lockfile
+####################################
+SFILE="/tmp/$(basename $0).${UN}.${TS}"
+log "INFO" "Watch file: $SFILE"
+PREFILE="${SFILE}.1"
+F=
+
+LOOP=1
+while [[ $LOOP -eq 1 ]]; do
+EMAIL_TEXT=""
+
+log "INFO" "$(datetime)"
+
+if [[ ! -f "${SFILE}" ]]; then
+	log "INFO" "First run."
+	F=1
+else
+	F=0
+	PREFILE="${SFILE}.1"
+	cp "${SFILE}" "${PREFILE}"
+	cat /dev/null > "${SFILE}"
+fi
+
+# read list file each loop in case changes to file
+IFS=$'\r\n' RECORDS_ARRAY=($(cat "${LISTFILE}"))
+for RECORD in "${RECORDS_ARRAY[@]}" ; do 
+
+#ignore comment lines
+COMMENT_REGEX='^\s*#'
+if [[ ${RECORD} =~ $COMMENT_REGEX ]]; then
+continue
+fi
+HOST=$(printf "%s" "${RECORD}" | cut -d':' -f1 )
+PORTLIST=$(printf "%s" "${RECORD}" | cut -d':' -f2 )
+IFS="," read -ra PORTLIST_ARRAY <<< "${PORTLIST}"
+NUMPORTS=${#PORTLIST_ARRAY[@]}
+
+# PING TEST
+ping_test "${HOST}"
+echo "${TEST_OUTPUT}" >> "${SFILE}"
+# check ports for host if listed
+for port in "${PORTLIST_ARRAY[@]}" ; do
+port_test "${HOST}" $port
+echo "${TEST_OUTPUT}" >> "${SFILE}"
+done # loop ports array
+
+done # loop listfile records
+
+# check for failures or change in state
+if [[ $F -eq 1 ]]; then
+	#first Loop
+	F=0
+	compare_files "${SFILE}"
+else
+	compare_files "${SFILE}" "${PREFILE}"
+fi
+
+if [[ ! -z "${MSG_TEXT}" ]]; then
+	echo "Results: ${MSG_TEXT}"
+	if [[ $A -eq 1 ]]; then
+		EMAIL_TEXT="${MSG_TEXT}"
+		sendmail
+	fi
+fi
+
+# check if we need to loop
+if [[ $W -eq 0 ]]; then
+	LOOP=0
+else
+	sleep $WATCH_SEC
+fi
+
+done # loop watch
+####################################
+exit 0
+####################################
+

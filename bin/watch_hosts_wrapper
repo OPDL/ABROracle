@@ -1,0 +1,5 @@
+#!/bin/bash
+RUNNING="$(/usr/bin/pgrep -u oracle '^watch_hosts$' | tr -d '\r\n' | tr -d '[[:space:]]')"
+if [[ -z $RUNNING ]]; then
+ /usr/bin/nohup /home/oracle/local/bin/watch_hosts -m /home/oracle/safe/WATCHFILE -w 60 -a >> /home/oracle/logs/watch_hosts.log 2>&1 &
+fi

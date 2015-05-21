@@ -1,0 +1,33 @@
+
+//create history table
+create table SVM900.F986110_EPC_HISTORY
+tablespace SVM900T
+as
+select * from SVM900.F986110
+order by JCEXEHOST, JCJOBNBR;
+commit;
+ALTER TABLE SVM900.F986110_EPC_HISTORY ADD CONSTRAINT "F986110_EPC_HISTORY_PK" PRIMARY KEY ("JCEXEHOST", "JCJOBNBR");
+commit;
+
+// insert missing records
+insert into SVM900.F986110_EPC_HISTORY
+SELECT * FROM
+( 
+WITH DS AS
+  (SELECT 
+     s.*
+  FROM SVM900.F986110 s
+  LEFT OUTER JOIN SVM900.F986110_EPC_HISTORY t
+  ON (s.JCEXEHOST    = t.JCEXEHOST)
+  AND (s.JCJOBNBR    = t.JCJOBNBR)
+  WHERE t.JCSBMDATE IS NULL
+  )
+SELECT * from DS
+);
+
+
+// confirm
+select count(*) from SVM900.F986110;
+select count(*) from SVM900.F986110_EPC_HISTORY;
+
+
