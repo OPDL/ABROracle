@@ -1,0 +1,10 @@
+#!/bin/bash
+# set -x
+####################################
+# Author: Adam Richards
+#
+# uses /etc/oratab
+####################################
+cat /etc/oratab | perl -nl -e 'print $1 if m/^([+]{0,1}\w+):/'
+exit 0
+####################################

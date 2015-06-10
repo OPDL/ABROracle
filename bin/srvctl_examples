@@ -1,0 +1,17 @@
+#!/bin/bash
+cat $0
+exit 0
+
+
+Oracle srvctl examples
+
+# stop or start specific instance
+srvctl stop|start instance -d epcp -i epcp1
+
+# stop or start specific DATABASE
+srvctl stop|start instance -d epcp
+
+
+# fancy one liner
+(while read s; do echo $s; done < <(srvctl config) ) | xargs -I{} srvctl status database -d {}
+(while read s; do echo $s; done < <(srvctl config) ) | xargs -I{} bash -c "srvctl status database -d {} | sed 's/^/{}: /'"

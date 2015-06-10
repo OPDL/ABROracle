@@ -26,7 +26,7 @@ CREATE TABLE "ACCT_PLATFORM"
 	 "VALUE" VARCHAR2(100 CHAR),  -- type sqlserver, oracle, ldap, linux, windows, ftp
 	 CONSTRAINT "ACCT_PLATFORM_PK" PRIMARY KEY ("ID")
    ) 
-  TABLESPACE "USERS" ;
+ ;
 /
 CREATE OR REPLACE TRIGGER "BI_ACCT_PLATFORM" 
   before insert on "ACCT_PLATFORM"              
@@ -51,7 +51,7 @@ CREATE TABLE "ACCT_CLASS"
 	 "VALUE" VARCHAR2(100 CHAR),  -- type sqlserver, oracle, ldap, linux, windows, ftp
 	 CONSTRAINT "ACCT_CLASS_PK" PRIMARY KEY ("ID")
    ) 
-  TABLESPACE "USERS" ;
+  ;
 /
 CREATE OR REPLACE TRIGGER "BI_ACCT_CLASS" 
   before insert on "ACCT_CLASS"              
@@ -76,7 +76,7 @@ CREATE TABLE "ACCT_GROUP"
 	 "VALUE" VARCHAR2(100 CHAR),  -- type sqlserver, oracle, ldap, linux, windows, ftp
 	 CONSTRAINT "ACCT_GROUP_PK" PRIMARY KEY ("ID")
    ) 
-  TABLESPACE "USERS" ;
+;
 /
 CREATE OR REPLACE TRIGGER "BI_ACCT_GROUP" 
   before insert on "ACCT_GROUP"              
@@ -102,7 +102,7 @@ CREATE TABLE "ACCT_TYPE"
 	 "VALUE" VARCHAR2(100 CHAR),  -- type sqlserver, oracle, ldap, linux, windows, ftp
 	 CONSTRAINT "ACCT_TYPE_PK" PRIMARY KEY ("ID")
    ) 
-  TABLESPACE "USERS" ;
+;
 /
 CREATE OR REPLACE TRIGGER "BI_ACCT_TYPE" 
   before insert on "ACCT_TYPE"              
@@ -131,7 +131,7 @@ CREATE TABLE "ACCT_CONTACT"
 	 "COMMENTS" VARCHAR2(2000 CHAR), -- additional comments
 	 CONSTRAINT "ACCT_CONTACT_PK" PRIMARY KEY ("ID")
    ) 
-  TABLESPACE "USERS" ;
+ ;
 /
 CREATE OR REPLACE TRIGGER "BI_ACCT_CONTACT" 
   before insert on "ACCT_CONTACT"              
@@ -165,7 +165,7 @@ CREATE TABLE "ACCT_CRIB"
 	"COMMENTS" VARCHAR2(2000 CHAR), 
 	 CONSTRAINT "ACCT_CRIB_PK" PRIMARY KEY ("ID")
    ) 
-  TABLESPACE "USERS" ;
+ ;
 
   COMMENT ON COLUMN  "ACCT_CRIB"."PLATFORM_ID" IS 'Hardware Platform REF';
   COMMENT ON COLUMN  "ACCT_CRIB"."CONTACT_ID" IS 'Contact Informatino REF';
@@ -250,4 +250,24 @@ insert into ACCT_CLASS ("ABBRV","VALUE") values ('UAT','User Acceptance Training
 commit;
 /
 
+insert into ACCT_PLATFORM ("ABBRV","VALUE") values ('Linux','Linux Unix System');
+insert into ACCT_PLATFORM ("ABBRV","VALUE") values ('Windows','Microsoft Windows');
+insert into ACCT_PLATFORM ("ABBRV","VALUE") values ('Other','Other');
+commit;
+/
+
+insert into ACCT_GROUP ("ABBRV","VALUE") values ('LDAP','Directory');
+insert into ACCT_GROUP ("ABBRV","VALUE") values ('OS','Operating System');
+insert into ACCT_GROUP ("ABBRV","VALUE") values ('DB','Database');
+insert into ACCT_GROUP ("ABBRV","VALUE") values ('APP','Application');
+commit;
+/
+
+insert into ACCT_TYPE ("ABBRV","VALUE") values ('Oracle','Directory');
+insert into ACCT_TYPE ("ABBRV","VALUE") values ('MSSQL','Operating System');
+insert into ACCT_TYPE ("ABBRV","VALUE") values ('FTP','FTP');
+insert into ACCT_TYPE ("ABBRV","VALUE") values ('LDAP','LDAP');
+insert into ACCT_TYPE ("ABBRV","VALUE") values ('OS','OS Login');
+commit;
+/
 
