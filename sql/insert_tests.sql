@@ -24,7 +24,7 @@ SET timing OFF;
 ALTER TABLE customer nologging;
 COMMIT;
 SET timing ON;
-INSERT /* +append */
+INSERT /*+ APPEND */
 INTO customer
   ( "ID" ,"ACCT_NUM","NAME","DT"
   )
@@ -37,13 +37,18 @@ FROM DUAL
 ALTER TABLE customer logging;
 COMMIT;
 SET timing OFF;
-SELECT COUNT(*) FROM customer;
 
+truncate table customer;
+
+ALTER TABLE customer logging;
+SELECT COUNT(*) FROM customer;
+SET AUTOTRACE ON STATISTICS;
 set timing on;
+
 DECLARE
   cnt NUMBER;
 BEGIN
-cnt := 10000000;
+cnt := 1000;
   FOR i IN 1..cnt
   LOOP
     INSERT INTO customer
@@ -56,21 +61,24 @@ cnt := 10000000;
   END LOOP;
 END;
 /
-set timing off;
-SELECT COUNT(*) FROM customer;
+commit;
 /
 
 ALTER TABLE customer nologging;
-commit;
-
+SELECT COUNT(*) FROM customer;
 set timing on;
+SET AUTOTRACE ON STATISTICS;
+
 DECLARE
   cnt NUMBER;
 BEGIN
-cnt := 10000000;
+cnt := 1000;
   FOR i IN 1..cnt
   LOOP
-    INSERT /* + append */ INTO customer
+-- To allow the APPEND hint to have an impact on redo generation, we must set the table to NOLOGGING
+-- Except in the case of a NOARCHIVELOG mode database, the APPEND hint will only reduce redo generation 
+-- if the table or tablespace is set to NOLOGGING.
+    INSERT /*+ APPEND */ INTO customer
       ( "ID" ,"ACCT_NUM","NAME","DT")
       SELECT TRUNC (DBMS_RANDOM.VALUE (1, 100000),0) "ID",
       TRUNC (DBMS_RANDOM.VALUE (10000, 100000), 2) "ACCT_NUM",
@@ -80,8 +88,11 @@ cnt := 10000000;
   END LOOP;
 END;
 /
+commit;
+/
 set timing off;
 ALTER TABLE customer logging;
 commit;
 SELECT COUNT(*) FROM customer;
 /
+
